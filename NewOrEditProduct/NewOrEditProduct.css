@@ -1,0 +1,42 @@
+.THIS {
+}
+
+.THIS .myself-grid1--1-of-16{
+	width:7.14%
+}
+
+.THIS .myself-grid1--2-of-16{
+	width:14.28%
+}
+
+.THIS .myself-grid1--3-of-16{
+	width:21.42%
+}
+
+.THIS .myself-grid1--4-of-16{
+	width:28.56%
+}
+
+.THIS .myself-size--1-of-16{
+	width:6.25%
+}
+
+.THIS .myself-size--2-of-16{
+	width:12.5%
+}
+
+.THIS .myself-size--3-of-16{
+	width:18.75%
+}
+
+.THIS .myself-size--4-of-16{
+	width:25%
+}
+
+.THIS .slds-myself-p{
+	padding-left:0.6rem;
+}
+
+.THIS .saveBtn{
+	margin-left: 45px;
+}

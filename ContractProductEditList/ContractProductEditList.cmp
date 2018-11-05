@@ -1,0 +1,381 @@
+<aura:component implements="force:appHostable,flexipage:availableForAllPageTypes,flexipage:availableForRecordHome,force:hasRecordId,forceCommunity:availableForAllPageTypes,force:lightningQuickAction,force:hasSObjectName" access="global" controller="ContractProductEditListController">
+	
+	<ltng:require scripts="{!$Resource.jquery}"  beforeLoadingResources="{!c.scriptsLoaded}"/> 
+
+	<aura:attribute name="recordId" type="Id"/>
+	<aura:attribute name="sObjectName" type="String"/>
+    <aura:attribute name="estimateRecordId" type="Id"/>
+    <aura:attribute name="showModal" type="Boolean" default="false"/>
+    
+    <!-- 選択フラグ -->
+    <aura:attribute name="checkFlag" type="Boolean" default="false"/>
+    
+    <!-- 除却があるフラグ -->
+    <aura:attribute name="deleteFlag" type="Boolean" default="false"/>
+
+    <aura:attribute name="invOppProductList" type="ContractProductEditListController.InvOppProduct[]"/>
+    
+    <!-- 在庫案件商品リスト 配送搬出用-->
+    <aura:attribute name="invOppProducts" type="InventoryOpportunityProduct__c[]"/>
+    
+    <!-- ランク -->
+    <aura:attribute name="rankuOpts" type="List" default="['A', 'B', 'C', 'D', 'M', 'S', 'N', 'P']"/>
+    
+    <!-- 更新情報 -->
+    <aura:attribute name="agreement" type="Agreement__c"/>
+
+    <!-- 初期化 -->
+    <aura:handler name="init" value="{!this}" action="{!c.doInit}"></aura:handler>
+
+    <aura:attribute name="productStatusOpts" type="List" default="['リース中', '買取', '解約']"/>
+
+    <aura:attribute name="section_show" type="Boolean" default="true"/>
+    
+    <!-- <aura:handler event="force:refreshView" action="{!c.refresh}" /> -->
+
+    <style type="text/css">
+     .slds-section__content {
+        -webkit-transition: all .5s ease-in-out;
+        transition: all .5s ease-in-out
+    }
+    .label-hide .slds-form-element__label{
+        display: none !important;
+    }
+    .rotate{
+        padding-left: 0.3rem !important;
+        padding-right: 0.7rem !important;
+    }
+    /*section 切り替えのスタイル*/
+    .slds-icon-utility-switch {
+        width: .875rem;
+        height: 1.875rem;
+        fill: currentColor;
+    }
+    .slds-card__header {
+       padding-top: 0rem;
+       padding-bottom: 0rem;
+    }
+    .iconbtn{
+        margin:0 3px;
+        cursor: pointer;
+    }
+    .slds-card__header_1 {
+       width:5rem;
+    }
+    .realeasePrice {
+       display: block;
+       overflow:hidden;
+       width:7rem;
+    }
+    </style>
+    
+    <div style="margin: 0 10px;" class="{!(v.section_show) ? 'slds-section  slds-is-open' : 'slds-section'}">
+        <!-- slds-is-open -->
+        <h3 class="slds-section__title">
+            <lightning:button class="slds-button slds-section__title-action" onclick="{!c.changesection}">
+                <lightning:icon class="slds-section__title-action-icon slds-button__icon slds-button__icon_left" iconName="utility:switch" size="xx-small"/>
+                <span style="padding-left: 5px;" class="slds-truncate" title="Section Title">商品一覧</span>
+            </lightning:button>
+        </h3>
+
+        <div class="slds-section__content">
+            <lightning:card >
+                <aura:if isTrue="{!v.sObjectName == 'Agreement__c'}">
+                     <c:DeliveryApply objectName="{!v.sObjectName}" showModal="{!v.showModal}" invOppProductList="{!v.invOppProducts}">
+                    </c:DeliveryApply>
+                </aura:if>
+                <aura:set attribute="title">
+                    <lightning:icon iconName="action:edit_relationship" size="x-small" alternativeText="商品変更"/>
+                </aura:set>
+                <aura:set attribute="actions">
+                    <aura:if isTrue="{!v.sObjectName == 'Agreement__c'}">
+                        <aura:if isTrue="{!or(or(v.agreement.Status__c == '契約待ち',v.agreement.Status__c == '契約済'),v.agreement.Status__c == '契約更新手続き中')}">
+                            <aura:if isTrue="{!and(v.agreement.Estimate__r.LeaseTerm__r.ContractEndSellingRate__c != null,v.agreement.Estimate__r.LeaseTerm__r.ContractEndSellingRate__c != 0)}">
+                                <lightning:button label="買取" onclick="{!c.sales}"/>
+                            </aura:if>
+                            <lightning:button label="解約" onclick="{!c.deletes}"/>
+                        </aura:if>
+                        <lightning:button label="リース中" onclick="{!c.leasing}"/>
+                        <aura:if isTrue="{!or(or(v.agreement.Status__c == '契約待ち',v.agreement.Status__c == '契約済'),v.agreement.Status__c == '契約更新手続き中')}">
+                            <aura:set attribute="else">
+                                <aura:if isTrue="{!v.deleteFlag == true}">
+                                    <lightning:button label="搬出" onclick="{!c.carryOutApply}"/>
+                                </aura:if>
+                            </aura:set>
+                        </aura:if>
+                    </aura:if>
+                    <aura:if isTrue="{!v.sObjectName == 'Purchase__c'}">
+                        <lightning:button label="入庫" onclick="{!c.purchaseStoring}"/>
+                    </aura:if>
+                    <aura:if isTrue="{!v.sObjectName == 'Delivery__c'}">
+                        <aura:if isTrue="{!v.invOppProductList[0].invOppProduct.Haisou__r.DeliveryType__c == '搬入'}">
+                            <lightning:button label="出庫準備完了" onclick="{!c.tehaiApply}"/>
+                        </aura:if>
+                        <lightning:button label="{!if(v.invOppProductList[0].invOppProduct.Haisou__r.DeliveryType__c == '搬出','搬出済','D/L（搬入）完了')}" onclick="{!c.deliveryApply}"/>
+                        <aura:if isTrue="{!v.invOppProductList[0].invOppProduct.Haisou__r.DeliveryType__c == '搬出'}">
+                            <lightning:button label="メンテ済" onclick="{!c.repair}"/>
+                            <lightning:button class="uiButton--brand " label="保存" onclick="{!c.save}"/>
+                        </aura:if>
+                    </aura:if>
+                </aura:set>
+            </lightning:card>
+            <ui:scrollerWrapper class="scrollerSize">
+            <table id="resizableTable" class="resizableTable slds-table slds-table_fixed-layout slds-table_bordered" role="grid">
+                <thead>
+                    <tr class="slds-line-height_reset">
+                        <th scope="col" style="width: 2rem">
+                            <ui:inputCheckbox class="slds-truncate" value="{!v.checkFlag}" change="{!c.checkAll}"/>
+                        </th>
+                        <th scope="col" style="width: 1.75rem"></th>
+                        <th class="slds-is-sortable slds-is-resizable slds-text-title_caps" scope="col" style="width: 6.25rem">
+                            <a href="javascript:void(0);" class="slds-th__action slds-text-link_reset"  style="padding:.25rem .0rem" tabindex="0">
+                                <span class="slds-assistive-text">Sort</span>
+                                <aura:if isTrue="{!v.sObjectName == 'Agreement__c'}">
+                                    <span class="slds-truncate">編集</span>
+                                </aura:if>
+                                <aura:if isTrue="{!or(v.sObjectName == 'Purchase__c',v.sObjectName == 'Delivery__c')}">
+                                    <span class="slds-truncate">ステータス</span>
+                                </aura:if>
+                                <div class="slds-icon_container"></div>
+                                <span class="slds-assistive-text" aria-live="assertive" aria-atomic="true"></span>
+                            </a>
+                        </th>
+                        <th class="slds-is-sortable slds-is-resizable slds-text-title_caps" scope="col" title="Vendor__c" style="width: 7rem">
+                            <a href="javascript:void(0);" class="slds-th__action slds-text-link_reset"  style="padding:.25rem .0rem" tabindex="0">
+                                <span class="slds-assistive-text">Sort</span>
+                                <span class="slds-truncate">設置場所</span>
+                                <div class="slds-icon_container"></div>
+                                <span class="slds-assistive-text" aria-live="assertive" aria-atomic="true"></span>
+                            </a>
+                        </th>
+                        <th class="slds-is-sortable slds-is-resizable slds-text-title_caps" scope="col" title="Vendor__c" style="width: 5.5rem">
+                            <a href="javascript:void(0);" class="slds-th__action slds-text-link_reset"  style="padding:.25rem .0rem" tabindex="0">
+                                <span class="slds-assistive-text">Sort</span>
+                                <span class="slds-truncate">在庫番号</span>
+                                <div class="slds-icon_container"></div>
+                                <span class="slds-assistive-text" aria-live="assertive" aria-atomic="true"></span>
+                            </a>
+                        </th>
+                        <th class="slds-is-sortable slds-is-resizable slds-text-title_caps" scope="col" style="width: 12rem">
+                            <a class="slds-th__action slds-text-link_reset" title="Name"  style="padding:.25rem .0rem">
+                                <span class="slds-assistive-text" name="Name"></span>
+                                <span class="slds-truncate">商品名</span>
+                                <div class="slds-icon_container" ></div>
+                                <span class="slds-assistive-text" aria-live="assertive" aria-atomic="true"></span>
+                            </a>
+                        </th>
+                        <th class="slds-is-sortable slds-is-resizable slds-text-title_caps" scope="col" style="width: 5rem">
+                            <a href="javascript:void(0);" class="slds-th__action slds-text-link_reset" title="Rank__c"  style="padding:.25rem .0rem">
+                                <span class="slds-assistive-text">Sort</span>
+                                <span class="slds-truncate">ランク</span>
+                                <div class="slds-icon_container"></div>
+                                <span class="slds-assistive-text" aria-live="assertive" aria-atomic="true"></span>
+                            </a>
+                        </th>
+                        <aura:if isTrue="{!and(v.invOppProductList[0].invOppProduct.Haisou__r.DeliveryType__c == '搬出',v.sObjectName == 'Delivery__c')}">
+                            <th class="slds-is-sortable slds-is-resizable slds-text-title_caps" scope="col" style="width: 6.75rem">
+                                <a class="slds-th__action slds-text-link_reset" title="Name"  style="padding:.25rem .0rem">
+                                    <span class="slds-assistive-text" name="Name"></span>
+                                    <span class="slds-truncate">ダメージ料金</span>
+                                    <div class="slds-icon_container" ></div>
+                                    <span class="slds-assistive-text" aria-live="assertive" aria-atomic="true"></span>
+                                </a>
+                            </th>
+                        </aura:if>
+                        <th class="slds-is-sortable slds-is-resizable slds-text-title_caps" scope="col" style="width: 4rem">
+                            <a href="javascript:void(0);" class="slds-th__action slds-text-link_reset" title="Quantity__c"  style="padding:.25rem .0rem">
+                                <span class="slds-assistive-text">Sort</span>
+                                <span class="slds-truncate">数量</span>
+                                <div class="slds-icon_container"></div>
+                                <span class="slds-assistive-text" aria-live="assertive" aria-atomic="true"></span>
+                            </a>
+                        </th>
+                        <th class="slds-is-sortable slds-is-resizable slds-text-title_caps" scope="col" style="width: 8rem">
+                            <a href="javascript:void(0);" class="slds-th__action slds-text-link_reset" title="MakerPrice__c"  style="padding:.25rem .0rem">
+                                <span class="slds-assistive-text">Sort</span>
+                                <span class="slds-truncate">定価（単価）</span>
+                                <div class="slds-icon_container"></div>
+                                <span class="slds-assistive-text" aria-live="assertive" aria-atomic="true"></span>
+                            </a>
+                        </th>
+                        <th class="slds-is-sortable slds-is-resizable slds-text-title_caps" scope="col" style="width: 8rem">
+                            <a href="javascript:void(0);" class="slds-th__action slds-text-link_reset" title="AmountPercentLease__c"  style="padding:.25rem .0rem">
+                                <span class="slds-assistive-text">Sort</span>
+                                <span class="slds-truncate">計算価値価格</span>
+                                <div class="slds-icon_container"></div>
+                                <span class="slds-assistive-text" aria-live="assertive" aria-atomic="true"></span>
+                            </a>
+                        </th>
+                        <th class="slds-is-sortable slds-is-resizable slds-text-title_caps" scope="col" title="Vendor__c" style="width: 8rem">
+                            <a href="javascript:void(0);" class="slds-th__action slds-text-link_reset" tabindex="0"  style="padding:.25rem .0rem">
+                                <span class="slds-assistive-text">Sort</span>
+                                <span class="slds-truncate">月額リース料</span>
+                                <div class="slds-icon_container"></div>
+                                <span class="slds-assistive-text" aria-live="assertive" aria-atomic="true"></span>
+                            </a>
+                        </th>
+                        <th class="slds-is-sortable slds-is-resizable slds-text-title_caps" scope="col" style="width: 6rem">
+                            <a href="javascript:void(0);" class="slds-th__action slds-text-link_reset" tabindex="0"  style="padding:.25rem .0rem">
+                                <span class="slds-assistive-text">Sort</span>
+                                <span class="slds-truncate">仕入率</span>
+                                <div class="slds-icon_container"></div>
+                                <span class="slds-assistive-text" aria-live="assertive" aria-atomic="true"></span>
+                            </a>
+                        </th>
+                        <th class="slds-is-sortable slds-is-resizable slds-text-title_caps" scope="col" style="width: 8rem">
+                            <a href="javascript:void(0);" class="slds-th__action slds-text-link_reset" title="SalesCost__c"  style="padding:.25rem .0rem">
+                                <span class="slds-assistive-text">Sort</span>
+                                <span class="slds-truncate">下代</span>
+                                <div class="slds-icon_container"></div>
+                                <span class="slds-assistive-text" aria-live="assertive" aria-atomic="true"></span>
+                            </a>
+                        </th>
+                        <th class="slds-is-sortable slds-is-resizable slds-text-title_caps" scope="col" style="width: 6.25rem">
+                            <a href="javascript:void(0);" class="slds-th__action slds-text-link_reset" tabindex="0"  style="padding:.25rem .0rem">
+                                <span class="slds-assistive-text">Sort</span>
+                                <span class="slds-truncate">現状区分</span>
+                                <div class="slds-icon_container"></div>
+                                <span class="slds-assistive-text" aria-live="assertive" aria-atomic="true"></span>
+                            </a>
+                        </th>
+                        <th class="slds-is-sortable slds-is-resizable slds-text-title_caps" scope="col" style="width: 6.25rem">
+                            <a href="javascript:void(0);" class="slds-th__action slds-text-link_reset" tabindex="0"  style="padding:.25rem .0rem">
+                                <span class="slds-assistive-text">Sort</span>
+                                <span class="slds-truncate">配送区分</span>
+                                <div class="slds-icon_container"></div>
+                                <span class="slds-assistive-text" aria-live="assertive" aria-atomic="true"></span>
+                            </a>
+                        </th>
+                    </tr>
+                </thead>
+                <tbody class="tableTrMove" id="{!'tableTrMove'+globalId}">
+                    <aura:iteration var="product" items="{!v.invOppProductList}" indexVar="index">
+
+                    <tr class="slds-hint-parent" style="height:45px;">
+                        <td role="row">
+                            <ui:inputCheckbox class="slds-truncate" disabled="{!and(v.sObjectName == 'Purchase__c',product.invOppProduct.Status__c == '在庫')}" value="{!product.selectedFlg}"/>
+                        </td>
+                        <td role="gridcell" class="slds-cell-edit slds-cell-error">
+                            <span class="slds-row-number slds-text-body_small slds-text-color_weak"></span>
+                            <span class="slds-hide sortNum">{!product.invOppProduct.Id}</span>
+                        </td>
+                        <!-- 編集或はステータス -->
+                        <td role="gridcell" class="label-hide">
+                                {!product.invOppProduct.Status__c}
+                        </td>
+                        <!-- 設置場所 -->
+                        <td scope="row">
+                            <div class="slds-truncate" >
+                                {!product.invOppProduct.OpportunityProduct__r.InstallationLocation__r.Name}
+                            </div>
+                        </td>
+                        <!-- 在庫番号 -->
+                        <td scope="row">
+                            <div class="slds-truncate" >
+                                {!product.invOppProduct.InventoryProduct__r.Name}
+                            </div>
+                        </td>
+                        <!-- 商品名 -->
+                        <td scope="row">
+                            <div class="slds-truncate">
+                                <aura:if isTrue="{!v.sObjectName == 'Delivery__c'}">
+                                    <a href="{!'/'+product.invOppProduct.InventoryProduct__c}" target="_blank">{!product.invOppProduct.OpportunityProduct__r.Name}</a>
+                                    <aura:set attribute="else">
+                                        <a href="{!'/'+product.invOppProduct.Id}" target="_blank">{!product.invOppProduct.OpportunityProduct__r.Name}</a>
+                                    </aura:set>
+                                </aura:if>
+                            </div>
+                        </td>
+                        
+                        <aura:if isTrue="{!and(v.invOppProductList[0].invOppProduct.Haisou__r.DeliveryType__c == '搬出',v.sObjectName == 'Delivery__c')}">
+                            <!-- ランク-->
+                            <td scope="row">
+                                <div class="slds-truncate label-hide" style="text-align:left;">
+                                    <lightning:select value="{!product.invOppProduct.Rank__c}">
+                                        <aura:iteration items="{!v.rankuOpts}" var="rankuOpt">
+                                            <option text="{!rankuOpt}" value="{!rankuOpt}"></option>
+                                        </aura:iteration>
+                                    </lightning:select>
+                                </div>
+                            </td>
+                            <!-- 販売率 -->
+                            <!-- x<td scope="row">
+                                <div class="">
+                                    <ui:inputNumber value="{!product.invOppProduct.SellingRate__c}" format="0.00 ％"/>
+                                </div>
+                            </td> -->
+                            <!-- ダメージ料金 -->
+                            <td scope="row">
+                                <div class="slds-truncate">
+                                    <ui:inputNumber value="{!product.invOppProduct.DamageMoney__c}" format="￥###,###,##0"/>
+                                </div>
+                            </td>
+                            <aura:set attribute="else">
+                                <!-- ランク-->
+                                <td scope="row">
+                                    <div class="slds-truncate" style="text-align:left;">
+                                        {!product.invOppProduct.Rank__c}
+                                    </div>
+                                </td>
+                            </aura:set>
+                        </aura:if>
+                        <!-- 数量 -->
+                        <td scope="row">
+                            <div style="text-align:left;">
+                                1
+                            </div>
+                        </td>
+                        <!-- 定価（単価） -->
+                        <td scope="row">
+                            <div class="slds-truncate" >
+                                <ui:outputCurrency currencySymbol="￥" value="{!product.invOppProduct.MakerPrice__c}"/>
+                            </div>
+                        </td>
+                        <!-- 計算価値価格 -->
+                        <td scope="row">
+                            <div class="slds-truncate" style="text-align:left;">
+                                <ui:outputCurrency currencySymbol="￥" value="{!product.invOppProduct.UnitPriceLease__c}"/>
+                            </div>
+                        </td>
+                        <!-- 月額リース料 -->
+                        <td scope="row">
+                            <ui:outputCurrency currencySymbol="￥" value="{!product.invOppProduct.EachMonthlyLeaseFee__c}"/>
+                        </td>
+                        <!-- 仕入率 -->
+                        <td scope="row">
+                            <div class="">
+                                <ui:outputNumber value="{!product.invOppProduct.OpportunityProduct__r.PurchaseRate__c}" format="0 ％"/>
+                            </div>
+                        </td>
+                        <!-- 下代 -->
+                        <td scope="row">
+                            <div class="slds-truncate">
+                                <ui:outputCurrency currencySymbol="￥" value="{!product.invOppProduct.SalesCost__c}"/>
+                            </div>
+                        </td>
+                        <!-- 現状区分 -->
+                        <td role="gridcell">
+                            <div class="slds-truncate" style="text-align:left;">
+                                {!product.invOppProduct.InventoryProduct__r.CurrentStatus__c}
+                            </div>
+                        </td>
+                        <!-- 配送区分 -->
+                        <td role="gridcell">
+                            <div class="slds-truncate label-hide" style="text-align:left;">
+                                <aura:if isTrue="{!and(product.invOppProduct.OpportunityProduct__r.ProductType__c=='仕入品', 
+                                                         and(!product.invOppProduct.SetupFeeFlag__c,
+                                                             and(!product.invOppProduct.KENSpecialDiscountFlag__c,
+                                                                 !product.invOppProduct.DiscountFlag__c)))}">
+                                    {!product.invOppProduct.OpportunityProduct__r.HaisouType__c}
+                                </aura:if>
+                            </div>
+                        </td>
+                    </tr>
+                    </aura:iteration>
+                </tbody>
+            </table>
+            </ui:scrollerWrapper>
+        </div>
+        <lightning:spinner aura:id="mySpinner" variant="brand" class="slds-hide"/>
+    </div>
+</aura:component>

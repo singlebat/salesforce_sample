@@ -1,0 +1,15 @@
+.THIS {
+}
+
+.THIS .mycontainer {
+    margin: 0 auto;
+    height: 100%;
+    padding: 3rem 0;
+}
+
+.THIS .my-body {
+    overflow: hidden;
+    overflow-y: auto;
+    max-height: 33rem;
+    background:#FFF;
+}

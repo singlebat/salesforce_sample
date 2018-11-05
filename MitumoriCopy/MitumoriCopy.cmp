@@ -1,0 +1,63 @@
+<aura:component implements="force:appHostable,flexipage:availableForAllPageTypes,flexipage:availableForRecordHome,force:hasRecordId,forceCommunity:availableForAllPageTypes,force:lightningQuickActionWithoutHeader" controller="MitumoriCopyController" access="global" >
+<style>
+    .slds-radio{
+        height:30px;
+    }
+    .changeRecordTypeLeftColumn{
+        float:left;
+        width:45%;
+        padding-left: 15%;
+    }
+    .changeRecordTypeRightColumn{
+        float:right;
+        width:55%;
+    }
+    .slds-p-around_medium, .slds-p-around--medium {
+        padding: 0rem !important;
+    }
+    .cuf-content{
+        padding:0rem 0rem !important;
+    }
+    .modal-body{
+        position: relative;
+        /*padding-top: 3.7rem !important;*/
+    }
+    .slds-modal__content{
+        overflow-y: hidden;
+    }
+</style>
+    <aura:attribute name="recordId" type="String"  />
+    <aura:attribute name="sObjectName" type="String"/>
+    <aura:attribute name="options" type="List" default="[
+    {'label': '新規採番','value':'new'},                                                  
+    {'label': '枝番', 'value': 'edaban'}
+    ]"/>
+    <aura:attribute name="value" type="String" default="new"/>
+
+	<div class="modal-container  mycontainer">
+		<div class="modal-header slds-modal__header">
+			<h2 class="title slds-text-heading--medium" style="margin-top: 6px;">見積コピー作成</h2>
+		</div>
+		<div class="slds-modal__content slds-p-around_medium">
+			<div class="slds-clearfix slds-card" style="padding-top:1.5rem;">
+				<div lass="test-id__record-layout-container riseTransitionEnabled">
+					<div class="full forcePageBlock forceRecordLayout">
+						<div class="changeRecordTypeLeftColumn">
+							<legend class="form-element__legend slds-form-element__label">選択を選択してください:</legend>
+						</div>
+						<div class="changeRecordTypeRightColumn slds-form-element__control">
+						    <lightning:radioGroup name="radioButtonGroup"
+							label="" options="{!v.options}" value="{!v.value}"/>
+						</div>
+					</div>
+				</div>
+			</div>
+		</div>
+		<div class="modal-footer slds-modal__footer" style="margin-top: 2.75rem">
+			<div class="forceModalActionContainer--footerAction forceModalActionContainer">
+				<lightning:button label="コピー" onclick="{!c.copyEstimate}"/>
+			</div>
+		</div>
+	</div>
+	<lightning:spinner aura:id="mySpinner" variant="brand" class="slds-hide" size="large"/>
+</aura:component>

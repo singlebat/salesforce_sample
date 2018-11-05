@@ -1,0 +1,810 @@
+<aura:component implements="flexipage:availableForAllPageTypes,force:hasRecordId,flexipage:availableForRecordHome,force:appHostable,forceCommunity:availableForAllPageTypes" 
+		access="global" controller="MitumoriNewProductController">
+    
+    <!-- 商品ID -->
+    <aura:attribute name="productId" type="Id" default=""/>
+    <aura:handler name="change" value="{!v.productId}" action="{!c.upsertRecord}"/>
+    <!-- 見積ID -->
+    <aura:attribute name="estimateRecordId" type="Id" default=""/>
+     <!-- 付属品表示フラグ -->
+    <aura:attribute name="display1" type="String" default="display:none"/>
+    <aura:attribute name="display2" type="String" default="display:none"/>
+    <aura:attribute name="display3" type="String" default="display:none"/>
+    
+    <!-- 編集の場合、初期設置場所ID -->
+    <aura:attribute name="installationLocationId" type="Id" default=""/>
+    <!-- 編集の場合、初期設置場所名前 ディフォルト値が必要-->
+    <aura:attribute name="installationLocationName" type="String" default="玄関"/>
+    <aura:attribute name="installationLocationOpts" type="List" default="[{'label': '玄関', 'value': '玄関'}]"/>
+    
+    <!-- 配送区分 -->
+    <aura:attribute name="haisouTypeOpts" type="List" default="['入庫', '顧客直送']"/>
+    
+    <!-- 編集の場合、仕入先名前  ディフォルト値が必要-->
+    <aura:attribute name="vendorName" type="String" default="仕入先"/>
+    
+    <!-- 商品区分 -->
+    <aura:attribute name="productType" type="String" default=""/>
+    <!-- 販売商品ID -->
+    <aura:attribute name="salesOppId" type="String"/>
+
+    <!-- 親コンポーネントから、見積を取得してから、コンポーネントの初期処理を行います。 -->
+    <aura:attribute name="estimate" type="Estimate__c"/>
+    <aura:handler name="change" value="{!v.estimate}" action="{!c.doInit}" />
+    
+
+    <aura:attribute name="opporProductRecord" type="OpportunityProduct__c" default="{'sobjectType':'OpportunityProduct__c'}"/>
+    <aura:attribute name="record" type="OpportunityProduct__c" default="{'sobjectType':'OpportunityProduct__c'}"/>
+    
+    <!-- LookUp向け -->
+    <aura:attribute name="opportunityProduct" type="OpportunityProduct__c" default="{'sobjectType':'OpportunityProduct__c'}"/>
+    
+    <!-- 商品マスタ変更 -->
+    <aura:handler name="change" value="{!v.opportunityProduct.Product__c}" action="{!c.productMasterChange}" />
+
+    <aura:attribute name="recordError" type="String" />
+    <!-- ルックアップコンポーネント向けに、ルックアップをクリアする用フラグ -->
+    <aura:attribute name="clearFlg" type="Boolean" default="false"/>
+    
+    <!-- 初期かどうかフラグ -->
+    <aura:attribute name="initFlg" type="Boolean" default="true"/>
+    <!-- サイズ制御フラグ -->
+    <aura:attribute name="widthDehtpFlg" type="Boolean" default="false"/>
+    <aura:attribute name="DiameterFlg" type="Boolean" default="false"/>
+
+    <aura:attribute name="recordTypeId" type="Id"/>
+    <aura:attribute name="leaseRTId" type="Id"/>
+    <aura:attribute name="sellingRTId" type="Id"/>
+    <aura:attribute name="colorRGB" type="String" default="red"/>
+    <!-- 新規または編集フラグ -->
+    <aura:attribute name="newEditDivision" type="String" default="new"/>
+    <!-- 商品のイメージ -->
+    <aura:attribute name="slides" type="Object[]"/>
+    
+    <!-- 仕入先変更の時、仕入率の取得など。 -->
+    <aura:handler name="change" value="{!v.opporProductRecord.Vendor__c}" action="{!c.vendorChange}"/>
+
+    <!-- 編集ロックフラグ -->
+    <aura:attribute name="recordNotLockFlag" type="boolean"/>
+
+    <force:recordData aura:id="recordEditor" 
+	    layoutType="FULL"               
+	    recordId="{!v.productId}"
+	    targetRecord="{!v.record}" 
+	    targetFields="{!v.opporProductRecord}"
+	    targetError="{!v.recordError}"
+	    recordUpdated="{!c.handleRecordUpdated}"
+	    mode="EDIT"/>
+	    
+<div style="text-align:right;padding-right:12px;margin-top: -54px;width: 40%;float: right">
+
+<!--
+status: {!v.recordNotLockFlag}
+QuotationStatus__c: {!v.estimate.QuotationStatus__c}
+
+ApprovalStatus__c: {!v.estimate.ApprovalStatus__c}
+-->
+
+                <aura:if isTrue="{!v.recordNotLockFlag}">
+                   <lightning:button label="在庫商品選択" onclick="{!c.oppProductCreate}"/>
+                   <lightning:button label="新規商品" onclick="{!c.clearNew}"/>
+                   <lightning:button label="付属品追加" onclick="{!c.accessAdd}"/>
+                   <aura:set attribute="else">
+                        	<span style="color: blue;">承認中、または見積済の場合、商品追加、項目編集ができません。</span>
+                   </aura:set>
+                </aura:if>
+                   <lightning:button class="uiButton--brand saveBtn" label="保存" onclick="{!c.handleSaveRecord}"/>
+</div>
+<div class="slds-grid">
+    <div class="slds-clearfix slds-card slds-size--1-of-8" style="text-align:center;">
+        <div style="height:100%;width:100%;">
+            <!-- <aura:html tag="img" class="imgcss" src="{!$Resource.img1}"/> -->
+            <c:ProductPicture slides="{!v.slides}"/>
+        </div>
+    </div>
+    <div class="slds-clearfix slds-card slds-size--7-of-8">
+        <!-- 商品情報 -->
+        <div class="test-id__section slds-is-open full forcePageBlockSection forcePageBlockSectionEdit">
+            <div class="slds-form slds-is-editing">
+                <div class="slds-grid full forcePageBlockSectionRow">
+                    <div class=" slds-myself-p full forcePageBlockItem forcePageBlockItemEdit myself-grid1--2-of-16">
+                        <div class="slds-form-element slds-form-element_edit slds-hint-parent">
+                            <div class="slds-form-element__control">
+                                <label class="label inputLabel uiLabel-left form-element__label uiLabel" >
+                                    <label class="slds-form-element__label slds-no-flex slds-m-right--xxx-small">
+                                        <abbr class="slds-required" title="必須">*</abbr> 
+                                        <span class="slds-assistive-text"></span>
+                                    </label>
+                                    <span>商品マスタ</span>
+                                </label>
+                                <div class="{!if(v.newEditDivision == 'new','','slds-hide')}">
+                                	<div class="{!if(v.recordNotLockFlag == true,'','slds-hide')}">
+                                		<force:inputField aura:id="lookup" value="{!v.opportunityProduct.Product__c}"/>	
+                                	</div>
+                                	<div class="{!if(v.recordNotLockFlag == false,'','slds-hide')}">
+                                		<ui:inputText  value="{!v.opportunityProduct.Product__c}" disabled="true"/>	
+                                	</div>
+                                </div>
+                                <div class="{!if(v.newEditDivision  == 'new','slds-hide','')}">
+                                    <c:Lookup objectType="CustomObjectProductMaster__c"
+                                              label="商品マスタ"
+                                              selectedRecordId="{!v.opporProductRecord.Product__c}" 
+                                              selectedRecordTitle="{!v.opporProductRecord.Product__r.Name}"
+                                              readOnly="{!if(or(v.newEditDivision == 'edit',!v.recordNotLockFlag),true,false)}"
+                                              showFiveRecent="true" widthPX="" 
+                                              objectIconPath="custom:custom8" >
+                                    </c:Lookup>
+                                </div>
+                                <div class="slds-hide">
+                                    <lightning:input type="checkbox" label="設置費用フラグ" checked="{!v.opporProductRecord.SetupFeeFlag__c}"/>
+                                    <lightning:input type="checkbox" label="KEN様特別値引き" checked="{!v.opporProductRecord.KENSpecialDiscountFlag__c}"/>
+                                    <lightning:input type="checkbox" label="出精値引" checked="{!v.opporProductRecord.DiscountFlag__c}"/>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class=" slds-myself-p full forcePageBlockItem forcePageBlockItemEdit myself-grid1--2-of-16">
+                        <div class="slds-form-element slds-form-element_edit slds-hint-parent">
+                            <div class="slds-form-element__control">
+                                <lightning:input type="text" name="productName" label="商品名" disabled="{!if(!v.recordNotLockFlag ,true,false)}" value="{!v.opporProductRecord.Name}" />
+                            </div>
+                        </div>
+                    </div>
+                    <div class=" slds-myself-p full forcePageBlockItem forcePageBlockItemEdit myself-grid1--3-of-16">
+                        <div class="slds-form-element slds-form-element_edit slds-hint-parent">
+                            <div class="slds-form-element__control">
+                                <lightning:input type="text" name="categoryName" label="商品カテゴリー" disabled="true" value="{!v.opporProductRecord.Category__c}" />
+                            </div>
+                        </div>
+                    </div>
+                    <div class=" slds-myself-p full forcePageBlockItem forcePageBlockItemEdit myself-grid1--2-of-16">
+                        <div class="slds-form-element slds-form-element_edit slds-hint-parent">
+                            <div class="slds-form-element__control">
+                                <lightning:select label="設置場所" value="{!v.opporProductRecord.InstallationLocation__c}" disabled="{!if(!v.recordNotLockFlag ,true,false)}">
+                                    <aura:iteration items="{!v.installationLocationOpts}" var="installationLocation">
+                                        <option text="{!installationLocation.label}" value="{!installationLocation.value}"></option>
+                                    </aura:iteration>
+                                </lightning:select>
+                                <div class="slds-hide"><lightning:input type="text" name="sortNo" label="ソートNO" disabled="true" value="{!v.opporProductRecord.SortNo__c}" /></div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class=" slds-myself-p full forcePageBlockItem forcePageBlockItemEdit myself-grid1--2-of-16">
+                        <div class="slds-form-element slds-form-element_edit slds-hint-parent">
+                            <div class="slds-form-element__control">
+                                <label class="label inputLabel uiLabel-left form-element__label uiLabel">
+                                    <span>仕入先</span>
+                                </label>
+                                <c:Lookup objectType="Account" label="仕入先"
+                                          selectedRecordId="{!v.opporProductRecord.Vendor__c}"
+                                          selectedRecordTitle="{!v.vendorName}" 
+                                          readOnly="{!if(or(v.productType == '在庫品',!v.recordNotLockFlag) ,true,false)}"
+                                          showFiveRecent="true" widthPX=""
+                                          objectIconPath="standard:account"
+                                          clearFlg="{!v.clearFlg}"
+                                          >
+                                </c:Lookup>
+                            </div>
+                        </div>
+                    </div>
+                    <div class=" slds-myself-p full forcePageBlockItem forcePageBlockItemEdit myself-grid1--2-of-16">
+                        <div class="slds-form-element slds-form-element_edit slds-hint-parent">
+                            <div class="slds-form-element__control">
+                                <lightning:input name="maker" label="メーカー" value="{!v.opporProductRecord.Maker__c}" disabled="true"/>
+                            </div>
+                        </div>
+                    </div>
+                    <div class=" slds-myself-p full forcePageBlockItem forcePageBlockItemEdit myself-grid1--1-of-16">
+                        <div class="slds-form-element slds-form-element_edit slds-hint-parent">
+                            <div class="slds-form-element__control">
+                                <ui:inputText label="現状区分" disabled="true" value="{!v.opporProductRecord.CurrentStatus__c}"/>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- その他名 -->
+        <div class="test-id__section slds-is-open full forcePageBlockSection forcePageBlockSectionEdit">
+            <div class="slds-form slds-is-editing">
+                <div class="slds-grid full forcePageBlockSectionRow">
+                    <div class=" slds-myself-p full forcePageBlockItem forcePageBlockItemEdit myself-grid1--2-of-16">
+                        <div class="slds-form-element slds-form-element_edit slds-hint-parent">
+                            <div class="slds-form-element__control">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class=" slds-myself-p full forcePageBlockItem forcePageBlockItemEdit myself-grid1--2-of-16">
+                        <div class="slds-form-element slds-form-element_edit slds-hint-parent">
+                            <div class="slds-form-element__control">
+                            </div>
+                        </div>
+                    </div>
+                    <div class=" slds-myself-p full forcePageBlockItem forcePageBlockItemEdit myself-grid1--3-of-16">
+                        <div class="slds-form-element slds-form-element_edit slds-hint-parent">
+                            <div class="slds-form-element__control">
+                            </div>
+                        </div>
+                    </div>
+                    <div class=" slds-myself-p full forcePageBlockItem forcePageBlockItemEdit myself-grid1--2-of-16">
+                        <div class="slds-form-element slds-form-element_edit slds-hint-parent">
+                            <div class="slds-form-element__control">
+                                <lightning:input type="text" label="その他設置場所" value="{!v.opporProductRecord.InstallationLocationOther__c}" disabled="{!if(!v.recordNotLockFlag,true,false)}"/>
+                            </div>
+                        </div>
+                    </div>
+                    <div class=" slds-myself-p full forcePageBlockItem forcePageBlockItemEdit myself-grid1--2-of-16">
+                        <div class="slds-form-element slds-form-element_edit slds-hint-parent">
+                            <div class="slds-form-element__control">
+                            </div>
+                        </div>
+                    </div>
+                    <div class=" slds-myself-p full forcePageBlockItem forcePageBlockItemEdit myself-grid1--2-of-16">
+                        <div class="slds-form-element slds-form-element_edit slds-hint-parent">
+                            <div class="slds-form-element__control">
+                            </div>
+                        </div>
+                    </div>
+                    <div class=" slds-myself-p full forcePageBlockItem forcePageBlockItemEdit myself-grid1--1-of-16">
+                        <div class="slds-form-element slds-form-element_edit slds-hint-parent">
+                            <div class="slds-form-element__control">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+              
+        <!-- 型番・照明 -->
+        <div class="test-id__section slds-is-open full forcePageBlockSection forcePageBlockSectionEdit">
+            <div class="slds-form slds-is-editing" role="list">
+                <div class="slds-grid full forcePageBlockSectionRow">
+                    <div class=" slds-myself-p full forcePageBlockItem forcePageBlockItemEdit myself-grid1--2-of-16">
+                        <div class="slds-form-element slds-form-element_edit slds-hint-parent">
+                            <div class="slds-form-element__control">
+                                <ui:inputText label="型名" value="{!v.opporProductRecord.ModelNumber__c}" required="true" disabled="{!if(!v.recordNotLockFlag,true,false)}"/>
+                            </div>
+                        </div>
+                    </div>
+                    <div class=" slds-myself-p full forcePageBlockItem forcePageBlockItemEdit myself-grid1--2-of-16">
+                        <div class="slds-form-element slds-form-element_edit slds-hint-parent">
+                            <div class="slds-form-element__control">
+                                <ui:inputText label="型番" value="{!v.opporProductRecord.ModelNo__c}" disabled="{!if(!v.recordNotLockFlag,true,false)}"/>
+                            </div>
+                        </div>
+                    </div>
+                    <div class=" slds-myself-p full forcePageBlockItem forcePageBlockItemEdit myself-grid1--1-of-16">
+                        <div class="slds-form-element slds-form-element_edit slds-hint-parent">
+                            <div class="slds-form-element__control">
+                                <ui:inputText label="色番" value="{!v.opporProductRecord.ColorNo__c}" disabled="{!if(!v.recordNotLockFlag,true,false)}"/>
+                            </div>
+                        </div>
+                    </div>
+                    <div class=" slds-myself-p full forcePageBlockItem forcePageBlockItemEdit myself-grid1--3-of-16">
+                        <div class="slds-form-element slds-form-element_edit slds-hint-parent">
+                            <div class="slds-form-element__control">
+                                <ui:inputText label="型番（自動）" disabled="true" value="{!if(!empty(v.opporProductRecord.ModelNumber__c) , v.opporProductRecord.ModelNumber__c  , '')
+                                                                        + if(!empty(v.opporProductRecord.ModelNo__c) ,if(!empty(v.opporProductRecord.ModelNumber__c),' / ' + v.opporProductRecord.ModelNo__c , v.opporProductRecord.ModelNo__c ) , '')
+                                                                        + if(!empty(v.opporProductRecord.ColorNo__c) ,if(!empty(v.opporProductRecord.ModelNumber__c) || !empty(v.opporProductRecord.ModelNo__c),' / ' + v.opporProductRecord.ColorNo__c, v.opporProductRecord.ColorNo__c), '')}"/>
+                            </div>
+                        </div>
+                    </div>
+                    <div class=" slds-myself-p full forcePageBlockItem forcePageBlockItemEdit myself-grid1--1-of-16">
+                        <div class="slds-form-element slds-form-element_edit slds-hint-parent">
+                            <div class="slds-form-element__control">
+                                <ui:inputCheckbox value="{!v.opporProductRecord.WhiteHot__c}" label="白熱色" disabled="{!if(!v.recordNotLockFlag,true,false)}"/>
+                            </div>
+                        </div>
+                    </div>
+                    <div class=" slds-myself-p full forcePageBlockItem forcePageBlockItemEdit myself-grid1--1-of-16">
+                        <div class="slds-form-element slds-form-element_edit slds-hint-parent">
+                            <div class="slds-form-element__control">
+                                <ui:inputCheckbox value="{!v.opporProductRecord.DenkyuColor__c}" label="電球色" disabled="{!if(!v.recordNotLockFlag,true,false)}"/>
+                            </div>
+                        </div>
+                    </div>
+                    <div class=" slds-myself-p full forcePageBlockItem forcePageBlockItemEdit myself-grid1--1-of-16">
+                        <div class="slds-form-element slds-form-element_edit slds-hint-parent">
+                            <div class="slds-form-element__control">
+                                <ui:inputCheckbox value="{!v.opporProductRecord.LED__c}" label="LED" disabled="{!if(!v.recordNotLockFlag,true,false)}"/>
+                            </div>
+                        </div>
+                    </div>
+                    <div class=" slds-myself-p full forcePageBlockItem forcePageBlockItemEdit myself-grid1--1-of-16">
+                        <div class="slds-form-element slds-form-element_edit slds-hint-parent">
+                            <div class="slds-form-element__control">
+                                <ui:inputCheckbox value="{!v.opporProductRecord.RC__c}" label="RC" disabled="{!if(!v.recordNotLockFlag,true,false)}"/>
+                            </div>
+                        </div>
+                    </div>
+                    <div class=" slds-myself-p full forcePageBlockItem forcePageBlockItemEdit" style="width:6.14%">
+                        <div class="slds-form-element slds-form-element_edit slds-hint-parent">
+                            <div class="slds-form-element__control">
+                                <ui:inputCheckbox value="{!v.opporProductRecord.EasySet__c}" label="簡易取付" disabled="{!if(!v.recordNotLockFlag,true,false)}"/>
+                            </div>
+                        </div>
+                    </div>
+                    <div class=" slds-myself-p full forcePageBlockItem forcePageBlockItemEdit" style="width:8.14%">
+                        <div class="slds-form-element slds-form-element_edit slds-hint-parent">
+                            <div class="slds-form-element__control">
+                                <ui:inputCheckbox value="{!v.opporProductRecord.OneTatch__c}" label="ワンタッチ取付" disabled="{!if(!v.recordNotLockFlag,true,false)}"/>
+                            </div>
+                        </div>
+                    </div>
+                </div>                       
+            </div>
+        </div>
+                
+        <!-- サイズ・仕様 -->
+        <div class="test-id__section slds-is-open full forcePageBlockSection forcePageBlockSectionEdit">
+            <div class="slds-form slds-is-editing" role="list">
+                <div class="slds-grid full forcePageBlockSectionRow">
+                    <div class=" slds-myself-p full forcePageBlockItem forcePageBlockItemEdit myself-grid1--1-of-16">
+                        <div class="slds-form-element slds-form-element_edit slds-hint-parent">
+                            <div class="slds-form-element__control">
+                                <ui:inputNumber label="幅" value="{!v.opporProductRecord.Width__c}" disabled="{!if(or(!v.recordNotLockFlag,v.widthDehtpFlg),true,false)}" change="{!c.sizeChange}"/>
+                            </div>
+                        </div>
+                    </div>
+                    <div class=" slds-myself-p full forcePageBlockItem forcePageBlockItemEdit myself-grid1--1-of-16">
+                        <div class="slds-form-element slds-form-element_edit slds-hint-parent">
+                            <div class="slds-form-element__control">
+                                <ui:inputNumber label="奥行" value="{!v.opporProductRecord.Depth__c}" disabled="{!if(or(!v.recordNotLockFlag,v.widthDehtpFlg),true,false)}" change="{!c.sizeChange}"/>
+                            </div>
+                        </div>
+                    </div>
+                    <div class=" slds-myself-p full forcePageBlockItem forcePageBlockItemEdit myself-grid1--1-of-16">
+                        <div class="slds-form-element slds-form-element_edit slds-hint-parent">
+                            <div class="slds-form-element__control">
+                                <ui:inputNumber label="高さ" value="{!v.opporProductRecord.Height__c}" disabled="{!if(!v.recordNotLockFlag,true,false)}"/>
+                            </div>
+                        </div>
+                    </div>
+                    <div class=" slds-myself-p full forcePageBlockItem forcePageBlockItemEdit myself-grid1--1-of-16">
+                        <div class="slds-form-element slds-form-element_edit slds-hint-parent">
+                            <div class="slds-form-element__control">
+                                <ui:inputNumber label="高さⅡ" value="{!v.opporProductRecord.Height2__c}" disabled="{!if(!v.recordNotLockFlag,true,false)}"/>
+                            </div>
+                        </div>
+                    </div>
+                    <div class=" slds-myself-p full forcePageBlockItem forcePageBlockItemEdit myself-grid1--1-of-16">
+                        <div class="slds-form-element slds-form-element_edit slds-hint-parent">
+                            <div class="slds-form-element__control">
+                                <ui:inputNumber label="直径" value="{!v.opporProductRecord.Diameter__c}" disabled="{!if(or(!v.recordNotLockFlag,v.DiameterFlg),true,false)}" change="{!c.sizeChange}"/>
+                            </div>
+                        </div>
+                    </div>
+                    <div class=" slds-myself-p full forcePageBlockItem forcePageBlockItemEdit myself-grid1--1-of-16">
+                        <div class="slds-form-element slds-form-element_edit slds-hint-parent">
+                            <div class="slds-form-element__control">
+                                <ui:inputNumber label="体積" value="{!v.opporProductRecord.Width__c * v.opporProductRecord.Depth__c * v.opporProductRecord.Height__c / 1000000000}" disabled="true"/>
+                            </div>
+                        </div>
+                    </div>
+                    <div class=" slds-myself-p full forcePageBlockItem forcePageBlockItemEdit myself-grid1--2-of-16">
+                        <div class="slds-form-element slds-form-element_edit slds-hint-parent">
+                            <div class="slds-form-element__control">
+                                <ui:inputText label="サイズ（自動）" value="{!if(v.opporProductRecord.Diameter__c == null,
+                                                                          if(v.opporProductRecord.Width__c != null , '(W)' + v.opporProductRecord.Width__c  , '')
+                                                                        + if(v.opporProductRecord.Depth__c != null ,if(v.opporProductRecord.Width__c != null,'×(D)' + v.opporProductRecord.Depth__c, v.opporProductRecord.Depth__c) , '')
+                                                                        + if(v.opporProductRecord.Height__c != null ,if(v.opporProductRecord.Depth__c != null || v.opporProductRecord.Width__c != null,'×(H)' + v.opporProductRecord.Height__c, '(H)' + v.opporProductRecord.Height__c), '')
+                                                                        + if(v.opporProductRecord.Height2__c != null ,'(SH)' + v.opporProductRecord.Height2__c, '')
+                                                                         ,
+                                                                        '(φ)' + v.opporProductRecord.Diameter__c + if ( v.opporProductRecord.Height__c == null,  '' , '×(H)' + v.opporProductRecord.Height__c ))}" disabled="true"/>
+                            </div>
+                        </div>
+                    </div>
+                    <div class=" slds-myself-p full forcePageBlockItem forcePageBlockItemEdit myself-grid1--2-of-16">
+                        <div class="slds-form-element slds-form-element_edit slds-hint-parent">
+                            <div class="slds-form-element__control">
+                                <ui:inputText label="その他" value="{!v.opporProductRecord.Specification4__c}" disabled="{!if(!v.recordNotLockFlag,true,false)}"/>
+                            </div>
+                        </div>
+                    </div>
+                    <div class=" slds-myself-p full forcePageBlockItem forcePageBlockItemEdit myself-grid1--1-of-16">
+                        <div class="slds-form-element slds-form-element_edit slds-hint-parent">
+                            <div class="slds-form-element__control">
+                                <ui:inputText label="容量" value="{!v.opporProductRecord.YoRyo__c}" disabled="{!if(!v.recordNotLockFlag,true,false)}"/>
+                            </div>
+                        </div>
+                    </div>
+                    <div class=" slds-myself-p full forcePageBlockItem forcePageBlockItemEdit myself-grid1--2-of-16">
+                        <div class="slds-form-element slds-form-element_edit slds-hint-parent">
+                            <div class="slds-form-element__control" style="readonly:true">
+                                <label class="label inputLabel uiLabel-left form-element__label uiLabel">
+                                    <span>色</span>
+                                </label>
+                                
+                               	<div class="{!if(v.recordNotLockFlag == true,'','slds-hide')}">
+                               		<force:inputField value="{!v.opporProductRecord.Color__c}" change="{!c.colorChange}"></force:inputField>
+                               	</div>
+                               	<div class="{!if(v.recordNotLockFlag == false,'','slds-hide')}">
+                               		<ui:inputText  value="{!v.opportunityProduct.Color__c}" disabled="true"/>
+                               	</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class=" slds-myself-p full forcePageBlockItem forcePageBlockItemEdit myself-grid1--1-of-16">
+                        <div class="slds-form-element slds-form-element_edit slds-hint-parent">
+                            <label class="label inputLabel uiLabel-left form-element__label uiLabel">
+                                <span>色イメージ</span>
+                            </label>
+                            <div class="slds-form-element__control" style="{!'min-height: calc(2.125rem);background-color:' 
+                                                                           + if(v.opporProductRecord.Color__c == 'ダークブラウン系' , 'rgb(218,11,0)' ,'')
+                                                                           + if(v.opporProductRecord.Color__c == 'ミディアムブラウン系' , 'rgb(119,83,63)' ,'')
+                                                                           + if(v.opporProductRecord.Color__c == 'ライトブラウン系' , 'rgb(229,192,146)' ,'')
+                                                                           + if(v.opporProductRecord.Color__c == 'ウォールナット系' , 'rgb(144,111,84)' ,'')
+                                                                           + if(v.opporProductRecord.Color__c == 'ベージュ・アイボリー系' , 'rgb(248,244 ,230)' ,'')
+                                                                           + if(v.opporProductRecord.Color__c == 'ブラック系' , 'rgb(0,0,0)' ,'')
+                                                                           + if(v.opporProductRecord.Color__c == 'グレー系' , 'rgb(170,170,170)' ,'')
+                                                                           + if(v.opporProductRecord.Color__c == 'ホワイト系' , 'rgb(255,255,255)' ,'')
+                                                                           + if(v.opporProductRecord.Color__c == 'クリアカラー系' , 'rgb(159,217,246)' ,'')
+                                                                           + if(v.opporProductRecord.Color__c == 'シルバー系' , 'rgb(192,192,192)' ,'')
+                                                                           + if(v.opporProductRecord.Color__c == 'ゴールド系' , 'rgb(255,215,0)' ,'')
+                                                                           + if(v.opporProductRecord.Color__c == 'レッド系' , 'rgb(255,0,0)' ,'')
+                                                                           + if(v.opporProductRecord.Color__c == 'グリーン系' , 'rgb(0,128,0)' ,'')
+                                                                           + if(v.opporProductRecord.Color__c == 'ブルー系' , 'rgb(0,0,255)' ,'')
+                                                                           + if(v.opporProductRecord.Color__c == 'イエロー・オレンジ系' , 'rgb(255,165,0)' ,'')
+                                                                           + if(v.opporProductRecord.Color__c == 'ピンク・パープル系' , 'rgb(165,59,85)' ,'')}" >
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+<div class="slds-grid">
+    <div class="slds-clearfix slds-card">
+        <!-- 仕様・配送 -->
+        <div class="test-id__section slds-is-open full forcePageBlockSection forcePageBlockSectionEdit">
+            <div class="slds-form slds-is-editing" role="list">
+                <div class="slds-grid full forcePageBlockSectionRow" data-aura-class="forcePageBlockSectionRow">
+                    <div class=" slds-myself-p full forcePageBlockItem forcePageBlockItemEdit myself-size--3-of-16">
+                        <div class="slds-form-element slds-form-element_edit slds-hint-parent">
+                            <div class="slds-form-element__control">
+                                <ui:inputText label="背・板・天板" value="{!v.opporProductRecord.Specification1__c}" disabled="{!if(!v.recordNotLockFlag,true,false)}"/>
+                            </div>
+                        </div>
+                    </div>
+                    <div class=" slds-myself-p full forcePageBlockItem forcePageBlockItemEdit myself-size--3-of-16">
+                        <div class="slds-form-element slds-form-element_edit slds-hint-parent">
+                            <div class="slds-form-element__control">
+                                <ui:inputText label="脚・ベース" value="{!v.opporProductRecord.Specification2__c}" disabled="{!if(!v.recordNotLockFlag,true,false)}"/>
+                            </div>
+                        </div>
+                    </div>
+                    <div class=" slds-myself-p full forcePageBlockItem forcePageBlockItemEdit myself-size--4-of-16">
+                        <div class="slds-form-element slds-form-element_edit slds-hint-parent">
+                            <div class="slds-form-element__control">
+                                <ui:inputText label="他" value="{!v.opporProductRecord.Specification3__c}" disabled="{!if(!v.recordNotLockFlag,true,false)}"/>
+                            </div>
+                        </div>
+                    </div>
+                    <div class=" slds-myself-p full forcePageBlockItem forcePageBlockItemEdit myself-size--1-of-16">
+                      <div class="slds-form-element slds-form-element_edit slds-hint-parent">
+                          <div class="slds-form-element__control">
+                              <!-- <force:inputField value="{!v.opporProductRecord.HaisouType__c}"></force:inputField> -->
+                              <lightning:select label="配送区分" value="{!v.opporProductRecord.HaisouType__c}" disabled="{!if(or(v.productType == '在庫品',!v.recordNotLockFlag) ,true,false)}">
+                                  <aura:iteration items="{!v.haisouTypeOpts}" var="haisouTypeOpt">
+                                      <option text="{!haisouTypeOpt}" value="{!haisouTypeOpt}"></option>
+                                  </aura:iteration>
+                              </lightning:select>
+                          </div>
+                      </div>
+                    </div>
+                    <div class=" slds-myself-p full forcePageBlockItem forcePageBlockItemEdit myself-size--2-of-16">
+                        <div class="slds-form-element slds-form-element_edit slds-hint-parent">
+                            <div class="slds-form-element__control">
+                                <ui:inputDate label="入庫予定日" value="{!v.opporProductRecord.PurchaseYoteiDate__c}" disabled="{!if(v.productType == '在庫品' ,true,false)}" displayDatePicker="true"/>
+                            </div>
+                        </div>
+                    </div>
+                    <div class=" slds-myself-p full forcePageBlockItem forcePageBlockItemEdit myself-size--3-of-16">
+                        <div class="slds-form-element slds-form-element_edit slds-hint-parent">
+                            <div class="slds-form-element__control">
+                                <ui:inputTextArea label="配送備考" value="{!v.opporProductRecord.PurchaseRemarks__c}" rows="1" disabled="{!if(!v.recordNotLockFlag,true,false)}"/>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <!-- 数量・価格 -->
+        <div class="test-id__section slds-is-open full forcePageBlockSection forcePageBlockSectionEdit">
+            <div class="slds-form slds-is-editing" role="list">
+                <div class="slds-grid full forcePageBlockSectionRow" data-aura-class="forcePageBlockSectionRow">
+                    <div class=" slds-myself-p full forcePageBlockItem forcePageBlockItemEdit myself-size--1-of-16">
+                      <div class="slds-form-element slds-form-element_edit slds-hint-parent">
+                        <div class="slds-form-element__control">
+                            <lightning:input type="number" label="数量" required="true" disabled="{!if(or(v.productType == '在庫品', !v.recordNotLockFlag),true,false)}" name="countNo" value="{!v.opporProductRecord.Quantity__c}" onchange="{!c.caculateSumData}"/>
+                        </div>
+                      </div>
+                    </div>
+                    <div class=" slds-myself-p full forcePageBlockItem forcePageBlockItemEdit myself-size--1-of-16">
+                        <div class="slds-form-element slds-form-element_edit slds-hint-parent">
+                            <div class="slds-form-element__control">
+                                <ui:inputNumber label="仕入率" disabled="{!if(or(v.productType == '在庫品', !v.recordNotLockFlag),true,false)}" value="{!v.opporProductRecord.PurchaseRate__c}" format="0 ％" change="{!c.caculateData}"/>
+                            </div>
+                        </div>
+                    </div>
+                    <div class=" slds-myself-p full forcePageBlockItem forcePageBlockItemEdit myself-size--2-of-16">
+                      <div class="slds-form-element slds-form-element_edit slds-hint-parent">
+                          <div class="slds-form-element__control">
+                              <ui:inputNumber label="メーカー単価" value="{!v.opporProductRecord.MakerPrice__c}" format="￥###,###,##0" change="{!c.caculateData}" disabled="{!if(!v.recordNotLockFlag,true,false)}"/>
+                          </div>
+                      </div>
+                    </div>
+                    <div class=" slds-myself-p full forcePageBlockItem forcePageBlockItemEdit myself-size--2-of-16">
+                      <div class="slds-form-element slds-form-element_edit slds-hint-parent">
+                          <div class="slds-form-element__control">
+                              <ui:inputNumber label="下代" value="{!v.opporProductRecord.SalesCost__c}" disabled="{!if(v.productType == '在庫品',true,false)}" format="￥###,###,##0"/>
+                          </div>
+                      </div>
+                    </div>
+                    <aura:if isTrue="{!v.recordTypeId == v.sellingRTId}">
+	                    <div class=" slds-myself-p full forcePageBlockItem forcePageBlockItemEdit myself-size--2-of-16">
+	                        <div class="slds-form-element slds-form-element_edit slds-hint-parent">
+	                            <div class="slds-form-element__control">
+	                                <ui:inputNumber label="販売率" value="{!v.opporProductRecord.SellingRate__c}" disabled="false" format="0 ％"/>
+	                            </div>
+	                        </div>
+	                    </div>
+	                    <div class=" slds-myself-p full forcePageBlockItem forcePageBlockItemEdit myself-size--2-of-16">
+	                        <div class="slds-form-element slds-form-element_edit slds-hint-parent">
+	                            <div class="slds-form-element__control">
+	                                <ui:inputNumber label="販売価値価格(単価)" value="{!v.opporProductRecord.MakerPrice__c * v.opporProductRecord.SellingRate__c/ 100}" disabled="true" format="￥###,###,##0"/>
+	                            </div>
+	                        </div>
+                    	</div>
+                    </aura:if>
+                    <aura:if isTrue="{!v.recordTypeId != v.sellingRTId}">
+	                    <div class=" slds-myself-p full forcePageBlockItem forcePageBlockItemEdit myself-size--2-of-16">
+	                        <div class="slds-form-element slds-form-element_edit slds-hint-parent">
+	                            <div class="slds-form-element__control">
+	                                <ui:inputNumber label="リース価値価格(単価)" value="{!v.opporProductRecord.UnitPriceLeaseSansyo__c}" disabled="true" format="￥###,###,##0"/>
+	                            </div>
+	                        </div>
+	                    </div>
+                    </aura:if>
+                    <div class=" slds-myself-p full forcePageBlockItem forcePageBlockItemEdit myself-size--2-of-16">
+	                        <div class="slds-form-element slds-form-element_edit slds-hint-parent">
+	                            <div class="slds-form-element__control">
+	                                <ui:inputNumber label="計算価値価格" value="{!v.opporProductRecord.UnitPriceLease__c}" change="{!c.caculateSumData}" format="￥###,###,##0" disabled="{!if(!v.recordNotLockFlag,true,false)}"/>
+	                            </div>
+	                        </div>
+                    </div>
+                    <div class=" slds-myself-p full forcePageBlockItem forcePageBlockItemEdit myself-size--1-of-16">
+                        <div class="slds-form-element slds-form-element_edit slds-hint-parent">
+                            <div class="slds-form-element__control">
+                                <ui:inputText label="ランク" disabled="true" value="{!v.opporProductRecord.Rank__c}"/>
+                            </div>
+                        </div>
+                    </div>
+                    <aura:if isTrue="{!v.recordTypeId != v.sellingRTId}">
+	                    <div class=" slds-myself-p full forcePageBlockItem forcePageBlockItemEdit myself-size--1-of-16">
+	                        <div class="slds-form-element slds-form-element_edit slds-hint-parent">
+	                            <div class="slds-form-element__control">
+	                                <ui:inputNumber label="ランク率" disabled="true" value="{!v.opporProductRecord.RankRate__c}" format="0 ％"/>
+	                            </div>
+	                        </div>
+	                    </div>
+	                    <div class=" slds-myself-p full forcePageBlockItem forcePageBlockItemEdit myself-size--2-of-16">
+	                        <div class="slds-form-element slds-form-element_edit slds-hint-parent">
+	                            <div class="slds-form-element__control">
+	                                <ui:inputText label="リース契約期間" value="{!v.opporProductRecord.LeaseTerm__c}" disabled="true"/>
+	                            </div>
+	                        </div>
+	                    </div>
+	                    <div class=" slds-myself-p full forcePageBlockItem forcePageBlockItemEdit myself-size--1-of-16">
+	                        <div class="slds-form-element slds-form-element_edit slds-hint-parent">
+	                            <div class="slds-form-element__control">
+	                                <ui:inputNumber label="リース料率" disabled="true" value="{!v.opporProductRecord.MonthlyLeaseRate__c}" format="0.0 ％"/>
+	                            </div>
+	                        </div>
+	                    </div>
+	                    <div class=" slds-myself-p full forcePageBlockItem forcePageBlockItemEdit myself-size--1-of-16">
+	                        <div class="slds-form-element slds-form-element_edit slds-hint-parent">
+	                            <div class="slds-form-element__control">
+	                                <ui:inputNumber label="月額リース料" disabled="true" value="{!v.opporProductRecord.MonthlyLeaseFee__c}" format="￥###,###,##0"/>
+	                            </div>
+	                        </div>
+	                    </div>
+                    </aura:if>
+                </div>
+            </div>
+        </div>
+    
+    
+    
+    
+     <!-- 付属品1 -->
+          <div class="test-id__section slds-is-open full forcePageBlockSection forcePageBlockSectionEdit" style="{!v.display1}">
+            <div class="slds-form slds-is-editing" role="list">
+                <div class="slds-grid full forcePageBlockSectionRow" data-aura-class="forcePageBlockSectionRow">
+                	<div class=" slds-myself-p full forcePageBlockItem forcePageBlockItemEdit myself-size--1-of-16">
+                        <div class="slds-form-element slds-form-element_edit slds-hint-parent">
+                            <div class="slds-form-element__control">
+                                		<div style="margin-top: 25px">付属品1</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class=" slds-myself-p full forcePageBlockItem forcePageBlockItemEdit myself-size--1-of-16">
+                        <div class="slds-form-element slds-form-element_edit slds-hint-parent">
+                            <div class="slds-form-element__control">
+                                		<div style="margin-top: 20px">
+                                		<lightning:buttonIcon alternativeText="1" title="削除" name="1" onclick="{!c.deleterow}" iconName="utility:clear" size="medium" class="iconbtn"/>
+                                		</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class=" slds-myself-p full forcePageBlockItem forcePageBlockItemEdit myself-size--2-of-16">
+                        <div class="slds-form-element slds-form-element_edit slds-hint-parent">
+                            <div class="slds-form-element__control">
+                                <ui:inputText label="名称" value="{!v.opporProductRecord.Accessories__c}" required="true" />
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class=" slds-myself-p full forcePageBlockItem forcePageBlockItemEdit myself-size--2-of-16">
+                        <div class="slds-form-element slds-form-element_edit slds-hint-parent">
+                            <div class="slds-form-element__control">
+                                <ui:inputText label="型番" value="{!v.opporProductRecord.AccessorieMod1__c}"/>
+                            </div>
+                        </div>
+                    </div>
+                    <div class=" slds-myself-p full forcePageBlockItem forcePageBlockItemEdit myself-size--2-of-16">
+                      <div class="slds-form-element slds-form-element_edit slds-hint-parent">
+                          <div class="slds-form-element__control">
+                                <ui:inputText label="仕様" value="{!v.opporProductRecord.AccessorieSp1__c}"/>
+                            </div>
+                      </div>
+                    </div>
+                     <div class=" slds-myself-p full forcePageBlockItem forcePageBlockItemEdit myself-size--1-of-16">
+                      <div class="slds-form-element slds-form-element_edit slds-hint-parent">
+                        <div class="slds-form-element__control">
+                            <!-- <lightning:input type="number" label="数量" required="true"  name="countNo1" value="{!v.opporProductRecord.AccessorieNum1__c}" /> -->
+                            <ui:inputNumber label="数量" required="true" value="{!v.opporProductRecord.AccessorieNum1__c}"/>
+                        </div>
+                      </div>
+                    </div>
+                     <div class=" slds-myself-p full forcePageBlockItem forcePageBlockItemEdit myself-size--2-of-16">
+                        <div class="slds-form-element slds-form-element_edit slds-hint-parent">
+                            <div class="slds-form-element__control">
+                                <ui:inputText label="サイズ" value="{!v.opporProductRecord.AccessorieSize1__c}"/>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <!-- 付属品2 -->
+          <div class="test-id__section slds-is-open full forcePageBlockSection forcePageBlockSectionEdit" style="{!v.display2}">
+            <div class="slds-form slds-is-editing" role="list">
+                <div class="slds-grid full forcePageBlockSectionRow" data-aura-class="forcePageBlockSectionRow">
+                	<div class=" slds-myself-p full forcePageBlockItem forcePageBlockItemEdit myself-size--1-of-16">
+                        <div class="slds-form-element slds-form-element_edit slds-hint-parent">
+                            <div class="slds-form-element__control">
+                                	<div style="margin-top: 25px">付属品2</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class=" slds-myself-p full forcePageBlockItem forcePageBlockItemEdit myself-size--1-of-16">
+                        <div class="slds-form-element slds-form-element_edit slds-hint-parent">
+                            <div class="slds-form-element__control">
+                                		<div style="margin-top: 20px">
+                                		<lightning:buttonIcon alternativeText="2" title="削除" name="2" onclick="{!c.deleterow}" iconName="utility:clear" size="medium" class="iconbtn"/>
+                                		</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class=" slds-myself-p full forcePageBlockItem forcePageBlockItemEdit myself-size--2-of-16">
+                        <div class="slds-form-element slds-form-element_edit slds-hint-parent">
+                            <div class="slds-form-element__control">
+                                <ui:inputText label="名称" value="{!v.opporProductRecord.Accessories2__c}" required="true" />
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class=" slds-myself-p full forcePageBlockItem forcePageBlockItemEdit myself-size--2-of-16">
+                        <div class="slds-form-element slds-form-element_edit slds-hint-parent">
+                            <div class="slds-form-element__control">
+                                <ui:inputText label="型番" value="{!v.opporProductRecord.AccessorieMod2__c}"/>
+                            </div>
+                        </div>
+                    </div>
+                    <div class=" slds-myself-p full forcePageBlockItem forcePageBlockItemEdit myself-size--2-of-16">
+                      <div class="slds-form-element slds-form-element_edit slds-hint-parent">
+                          <div class="slds-form-element__control">
+                                <ui:inputText label="仕様" value="{!v.opporProductRecord.AccessorieSp2__c}"/>
+                            </div>
+                      </div>
+                    </div>
+                     <div class=" slds-myself-p full forcePageBlockItem forcePageBlockItemEdit myself-size--1-of-16">
+                      <div class="slds-form-element slds-form-element_edit slds-hint-parent">
+                        <div class="slds-form-element__control">
+                            <!-- <lightning:input type="number" label="数量" required="true"  name="countNo2" value="{!v.opporProductRecord.AccessorieNum2__c}" /> -->
+                            <ui:inputNumber label="数量" required="true" value="{!v.opporProductRecord.AccessorieNum2__c}"/>
+                        </div>
+                      </div>
+                    </div>
+                     <div class=" slds-myself-p full forcePageBlockItem forcePageBlockItemEdit myself-size--2-of-16">
+                        <div class="slds-form-element slds-form-element_edit slds-hint-parent">
+                            <div class="slds-form-element__control">
+                                <ui:inputText label="サイズ" value="{!v.opporProductRecord.AccessorieSize2__c}"/>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    	<!-- 付属品3 -->
+          <div class="test-id__section slds-is-open full forcePageBlockSection forcePageBlockSectionEdit" style="{!v.display3}">
+            <div class="slds-form slds-is-editing" role="list">
+                <div class="slds-grid full forcePageBlockSectionRow" data-aura-class="forcePageBlockSectionRow">
+                	<div class=" slds-myself-p full forcePageBlockItem forcePageBlockItemEdit myself-size--1-of-16">
+                        <div class="slds-form-element slds-form-element_edit slds-hint-parent">
+                            <div class="slds-form-element__control">
+                                		<div style="margin-top: 25px">付属品3</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class=" slds-myself-p full forcePageBlockItem forcePageBlockItemEdit myself-size--1-of-16">
+                        <div class="slds-form-element slds-form-element_edit slds-hint-parent">
+                            <div class="slds-form-element__control">
+                                		<div style="margin-top: 20px">
+                                		<lightning:buttonIcon alternativeText="3" title="削除" name="3" onclick="{!c.deleterow}" iconName="utility:clear" size="medium" class="iconbtn"/>
+                                		</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class=" slds-myself-p full forcePageBlockItem forcePageBlockItemEdit myself-size--2-of-16">
+                        <div class="slds-form-element slds-form-element_edit slds-hint-parent">
+                            <div class="slds-form-element__control">
+                                <ui:inputText label="名称" value="{!v.opporProductRecord.Accessories3__c}" required="true" />
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class=" slds-myself-p full forcePageBlockItem forcePageBlockItemEdit myself-size--2-of-16">
+                        <div class="slds-form-element slds-form-element_edit slds-hint-parent">
+                            <div class="slds-form-element__control">
+                                <ui:inputText label="型番" value="{!v.opporProductRecord.AccessorieMod3__c}"/>
+                            </div>
+                        </div>
+                    </div>
+                    <div class=" slds-myself-p full forcePageBlockItem forcePageBlockItemEdit myself-size--2-of-16">
+                      <div class="slds-form-element slds-form-element_edit slds-hint-parent">
+                          <div class="slds-form-element__control">
+                                <ui:inputText label="仕様" value="{!v.opporProductRecord.AccessorieSp3__c}"/>
+                            </div>
+                      </div>
+                    </div>
+                     <div class=" slds-myself-p full forcePageBlockItem forcePageBlockItemEdit myself-size--1-of-16">
+                      <div class="slds-form-element slds-form-element_edit slds-hint-parent">
+                        <div class="slds-form-element__control">
+                            <!-- <lightning:input type="number" label="数量" required="true"  name="countNo3" value="{!v.opporProductRecord.AccessorieNum3__c}" /> -->
+                            <ui:inputNumber label="数量" required="true" value="{!v.opporProductRecord.AccessorieNum3__c}"/>
+                        </div>
+                      </div>
+                    </div>
+                     <div class=" slds-myself-p full forcePageBlockItem forcePageBlockItemEdit myself-size--2-of-16">
+                        <div class="slds-form-element slds-form-element_edit slds-hint-parent">
+                            <div class="slds-form-element__control">
+                                <ui:inputText label="サイズ" value="{!v.opporProductRecord.AccessorieSize3__c}"/>
+                            </div>
+                        </div> 
+                    </div>
+                </div>
+            </div>
+        </div>
+    
+    
+    
+    </div>
+</div>
+      <lightning:spinner aura:id="childSpinner" variant="brand" class="slds-hide" size="large" style="position:fixed;"/>
+</aura:component>

@@ -1,0 +1,115 @@
+<aura:component implements="flexipage:availableForAllPageTypes" access="global" controller="PdfGeneratorController">
+	
+	<aura:attribute name="Payways" type="List" default="[
+    {'label': '振込', 'value': '振込'},
+    {'label': 'クレジットカード', 'value': 'クレジットカード'},
+    {'label': '口座引落','value':'口座引落'}
+    ]"/>
+    <aura:attribute name="locals" type="List" default="[
+    {'label': '一致する', 'value': '一致する'},
+    {'label': '一致しない','value':'一致しない'}
+    ]"/>
+	<aura:attribute name="PaywayValue" type="String" default="振込"/>
+	<aura:attribute name="localValue" type="String" default="一致する"/>
+	<aura:attribute name="year" type="String" default=""/>
+	<aura:attribute name="month" type="String" default=""/>
+	<aura:attribute name="day" type="String" default=""/>
+	<aura:attribute name="errorMessage" type="String" default=""/>
+	<aura:attribute name="EstimateId" type="String" default=""/>
+	<aura:attribute name="EstimateName" type="String" default=""/>
+	<aura:attribute name="newBill" type="Billed__c" default="{'sobjectType':'Billed__c'}"/>
+	<aura:attribute name="newEsti" type="Estimate__c" default="{'sobjectType':'Estimate__c'}"/>
+	<!-- 初期化処理 -->
+	<aura:handler name="init" value="{!this}" action="{!c.doInit}"/>
+	
+	<div class="modal-container">
+	    <div class="modal-header slds-modal__header">
+	        <h2 class="title slds-text-heading--medium" style="margin-top: 6px;" >マンスリー請求書作成</h2>
+	   	</div>
+	   	<div class="slds-scope slds-modal__content forcePageBlockItemEdit" style="margin-top:0px">
+                <div style="padding:2rem;margin-top: -11px;overflow:auto;" class="slds-form slds-form_compound">
+                        <span style="color: red;">{!v.errorMessage}</span>
+				<div class="slds-form-element__group">   	
+				   <div class="slds-form-element__row">
+				                <div class="slds-form-element slds-size_1-of-3">
+				                    <div class="slds-form-element__control">
+				                        <ui:inputText label="請求年" value="{!v.year}"/>
+				                    </div>
+				                </div>
+				                <div class="slds-form-element slds-size_1-of-3">
+				                    <div class="slds-form-element__control">
+				                        
+				                    </div>
+				                </div>
+				                <div class="slds-form-element slds-size_1-of-3">
+				                    <div class="slds-form-element__control">
+				                         <ui:inputText label="請求月" value="{!v.month}"/>
+				                    </div>
+				                </div>
+				       </div>
+					<div class="slds-form-element__row">
+				       <h3 style="width: 100%" class="slds-section__title slds-theme--shade primaryPaletteBorder test-id__section-header-container">
+				           <span class="test-id__section-header-title section-header-title slds-p-horizontal--small slds-truncate">一括請求書作成条件選択</span>
+				       </h3>
+				    </div>
+				    <div class="slds-form-element__row">
+				       <div class="slds-form-element slds-size_1-of-3">
+				               	<div class="slds-form-element__control">
+										<lightning:select value="{!v.PaywayValue}" label="支払方法:">
+				                                <aura:iteration items="{!v.Payways}" var="Payway">
+				                                    <option text="{!Payway.label}" value="{!Payway.value}"></option>
+				                                </aura:iteration>
+				                   		</lightning:select>
+				    			</div>
+						</div>
+				       <div class="slds-form-element slds-size_1-of-3">
+				               	<div class="slds-form-element__control">
+										<lightning:select value="{!v.localValue}" label="請求先と送付先住所:">
+				                                <aura:iteration items="{!v.locals}" var="local">
+				                                    <option text="{!local.label}" value="{!local.value}"></option>
+				                                </aura:iteration>
+				                   		</lightning:select>
+				    			</div>
+						</div>
+				        <div class="slds-form-element slds-size_1-of-3">
+				                    <div class="slds-form-element__control">
+				                         <ui:inputText label="期日(日) (月末日は99)" value="{!v.day}"/>
+				                    </div>
+		                </div>
+				   	</div>
+				                  
+					<div class="slds-form-element__row">
+				       <h3 style="width: 100%" class="slds-section__title slds-theme--shade primaryPaletteBorder test-id__section-header-container">
+				           <span class="test-id__section-header-title section-header-title slds-p-horizontal--small slds-truncate">個別取引先請求書作成条件選択</span>
+				       </h3>
+				   	</div>
+				   	<div class="slds-form-element__row">
+				   	 <div class="slds-form-element slds-size_1-of-2">
+	                                   	請求先
+	                                    <div class="slds-form-element__control">
+	                                        <force:inputField aura:id="lookup" value="{!v.newBill.Account__c}"/>
+	                                    </div>
+	                                </div>
+
+	                                <div class="slds-form-element slds-size_1-of-2">
+                                                                        問合せNo(契約)
+                                        <div class="slds-form-element__control">
+	                                        <force:inputField aura:id="lookup" value="{!v.newBill.agrement__c}"/>
+	                                    </div>
+	                                </div>
+				   	</div>
+				   	<div class="slds-form-element__row">
+				   		<div class="slds-form-element slds-size_6-of-8">
+                              <div class="slds-form-element__control">
+
+                              </div>
+                        </div>
+                        <div class="slds-form-element slds-size_2-of-8">
+                    		<lightning:button class="slds-button slds-button_brand" label="請求書作成" onclick="{!c.handleClick}"/>
+                		</div>
+				   	</div>
+				</div>
+			</div>
+		</div>
+    </div>
+</aura:component>

@@ -1,0 +1,262 @@
+<aura:component implements="force:appHostable,flexipage:availableForAllPageTypes,flexipage:availableForRecordHome,force:hasRecordId,force:hasSObjectName,forceCommunity:availableForAllPageTypes,force:lightningQuickActionWithoutHeader" 
+    controller="EditMitumoriController" access="global" >
+    <style type="text/css">
+
+    .slds-p-around_medium, .slds-p-around--medium {
+        padding: 0rem !important;
+    }
+    .cuf-content{
+        padding:0rem 0rem !important;
+    }
+    .slds-modal__content{
+        overflow-y: hidden;
+    }
+    .block .form-element__label{
+        display: block !important;
+    }
+        
+  </style>
+    <aura:attribute name="recordId" type="Id" />
+    <aura:attribute name="sObjectName" type="String" />
+    <aura:set attribute="error" value=""/>
+    
+    <!-- 初期化処理 -->
+	<aura:handler name="init" value="{!this}" action="{!c.doInit}"/>
+    <!-- エラーメッセージ -->
+    <aura:attribute name="errorMessage" type="String" default=""/> 
+    
+    <!-- 契約期間（ヶ月） -->
+    <aura:attribute name="KeiyakuKikan" type="String" />
+
+ 	<!-- ACCOUNT ID -->
+    <aura:attribute name="accountId" type="Id" />
+    <!--  ACCOUNT NAME -->
+    <aura:attribute name="accountName" type="String" />
+    <!-- PropertyId -->
+    <aura:attribute name="PropertyId" type="Id" />
+    <!-- PropertyName -->
+    <aura:attribute name="PropertyName" type="String" />
+    <aura:attribute name="OpportunityId" type="Id" default=""/>
+
+    <!-- 初期かどうかフラグ -->
+    <aura:attribute name="initFlg" type="Boolean" default="true"/>
+    
+    <!-- LDS向け -->
+    <aura:attribute name="newEstimate" type="Estimate__c" default="{'sobjectType':'Estimate__c'}"/>
+    <!-- init-->
+    <aura:attribute name="initEs" type="Estimate__c" default="{'sobjectType':'Estimate__c'}"/>
+    <aura:attribute name="initOp" type="Opportunity" default="{'sobjectType':'Opportunity'}"/>
+    
+    <aura:attribute name="EstimateError" type="String" />
+    
+    <force:recordData aura:id="EstimateEditor"
+    layoutType="FULL"     
+    recordId="{!v.recordId}"
+    targetRecord="{!v.newEstimate}"
+    targetFields="{!v.initEs}"
+    targetError="{!v.EstimateError}"
+    mode="EDIT" />
+    
+    <!-- 前画面からレコードタイプ -->
+    <aura:attribute name="optionsvalue" type="Object" default=""/> 
+    <aura:attribute name="typeId" type="String" default=""/>
+
+    <!-- リース契約期間変更向け処理 -->
+    <aura:handler name="change" value="{!v.initEs.LeaseTerm__c}" action="{!c.leaseTermChange}" />
+    
+    <div>
+      	 <div class="modal-container">	
+      		<div class="modal-header slds-modal__header" >
+            		<h2 class="title slds-text-heading--medium" style="margin-top: 0px;" >見積編集</h2>
+            </div>
+            <div class="slds-scope slds-modal__content forcePageBlockItemEdit" style="margin-top:0px;height:34.5rem;overflow:auto;">
+            <div style="padding:2rem;margin-top: 0px;" class="slds-form slds-form_compound">
+                        <span style="color: red;">{!v.errorMessage}</span>
+                        <div class="slds-form-element__group"> 
+                        
+                             
+                            <div class="slds-form-element__row">
+                                <div class="slds-form-element slds-size_1-of-2">
+                                    <div class="slds-form-element__control">
+                                        <lightning:input name="oppName" required="true" label="案件名" value="{!v.initOp.Name}" readonly="true"/>
+                                    </div>
+                                </div>
+                                <div class="slds-form-element slds-size_1-of-2">
+                                    <div class="slds-form-element__control">
+                                        <ui:inputDate label="納品希望日" value="{!v.initOp.CloseDate}" required="true" displayDatePicker="true"/>
+                                    </div>
+                                </div>
+                            </div>
+                           
+							<div class="slds-form-element__row">
+                                <div class="slds-form-element slds-size_1-of-2">使用者
+                                	<c:Lookup objectType="Account"
+                                              label="使用者"
+                                              selectedRecordId="{!v.accountId}" 
+                                              selectedRecordTitle="{!v.accountName}"
+                                              readOnly="false"
+                                              showFiveRecent="true" widthPX=""
+                                              objectIconPath="custom:custom29"
+                                              >
+                                    </c:Lookup>
+                                </div>
+
+                                <div class="slds-form-element slds-size_1-of-2">場所（物件名）
+                                	<c:Lookup objectType="Account"
+                                              label="場所（物件名）"
+                                              selectedRecordId="{!v.PropertyId}" 
+                                              selectedRecordTitle="{!v.PropertyName}"
+                                              readOnly="false"
+                                              showFiveRecent="true" widthPX=""
+                                              objectIconPath="custom:custom29"
+                                              >
+                                    </c:Lookup>                                
+                                </div>
+                            </div>
+                            
+                            <div class="slds-form-element__row">
+                                <div class="slds-form-element slds-size_1-of-2">
+                                </div>
+
+                                <div class="slds-form-element slds-size_1-of-2">
+                                    <div class="slds-form-element__control">
+                                        <lightning:input name="oppName" label="部屋番号" value="{!v.initOp.HomeNumber__c}"/>
+                                    </div>
+                                </div>
+                            </div>
+                           
+                            <div class="slds-form-element__row">
+                                <h3 style="width: 100%" class="slds-section__title slds-theme--shade primaryPaletteBorder test-id__section-header-container">
+                                    <span class="test-id__section-header-title section-header-title slds-p-horizontal--small slds-truncate">見積情報</span>
+                                </h3>
+                            </div>
+                            <div class="slds-form-element__row">
+                                <div class="slds-form-element slds-size_1-of-2">
+                                    <div class="slds-form-element__control">
+                                    <ui:inputDate label="見積日" value="{!v.initEs.EstimatedDate__c}" displayDatePicker="true" change="{!c.estimatedDateChange}"/>
+                                       
+                                    </div>
+                                </div>
+                                <div class="slds-form-element slds-size_1-of-2">
+                                    <div class="slds-form-element__control">
+                                        <label class="label inputLabel uiLabel-left form-element__label uiLabel" data-aura-class="uiLabel">
+                                            <span>見積タイプ</span>
+                                        </label>
+
+                                    	<div class="{!if(v.optionsvalue=='リース','','slds-hide')}">
+                                        	<force:inputField value="{!v.initEs.QuotationType__c}" aura:id="QuotationType"></force:inputField>
+                                    	</div>
+                                    	<div class="{!if(v.optionsvalue=='リース','slds-hide','')}">
+                                        	<force:inputField value="{!v.initEs.QuotationSalesType__c}" aura:id="QuotationType1"></force:inputField>
+                                    	</div>
+                                    
+                                    
+                                    </div>
+                                </div>
+							</div>
+                            
+                            <div class="slds-form-element__row">
+                                <div class="slds-form-element slds-size_1-of-2">
+                                    <div class="slds-form-element__control">
+                                        <ui:inputDate label="有効期限" value="{!v.initEs.ExpirationDate__c}"  displayDatePicker="true"/>
+                                    </div>
+                                </div>
+                                <div class="slds-form-element slds-size_1-of-2">
+                                    <div class="slds-form-element__control"></div>
+                                </div>
+                            </div>
+                            <aura:if isTrue="{!v.optionsvalue=='リース'}">
+                            <div class="slds-form-element__row">
+                                <h3 style="width: 100%" class="slds-section__title slds-theme--shade primaryPaletteBorder test-id__section-header-container">
+                                    <span class="test-id__section-header-title section-header-title slds-p-horizontal--small slds-truncate">リース契約</span>
+                                </h3>
+                             </div>
+                             <div class="slds-form-element__row">
+                          
+                                <div class="slds-form-element slds-size_1-of-2" >リース契約
+                                    <div class="slds-form-element__control" style="margin-top:0px;">
+                                        <c:Lookup objectType="LeaseRateMaster__c"
+                                              label="リース契約"
+                                              selectedRecordId="{!v.initEs.LeaseTerm__c}" 
+                                              selectedRecordTitle="{!v.initEs.LeaseTerm__r.Name}"
+                                              readOnly="false"
+                                              showFiveRecent="true" widthPX=""
+                                              objectIconPath="custom:custom29">
+                                        </c:Lookup>
+                                    </div>
+                                </div>
+                               
+                                <div class="slds-form-element slds-size_1-of-2">
+                                    <div class="slds-form-element__control" style="margin-left:2px;">
+                                        <ui:inputNumber label="月額リース料率" value="{!v.initEs.MonthlyLeaseRate__c}" format="0.0 ％"/>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="slds-form-element__row">
+                                <div class="slds-form-element slds-size_1-of-2">
+
+                                    <div class="slds-form-element__control block">
+                                        <ui:inputDate label="リース開始日" value="{!v.initEs.LeaseStart__c}"  displayDatePicker="true" change="{!c.leaseStartChange}"/>
+                                    </div>
+                                </div>
+                                <div class="slds-form-element slds-size_1-of-2">
+
+                                    <div class="slds-form-element__control block">
+
+                                        <ui:inputNumber label="初回ﾘｰｽ月数（ヶ月）" value="{!v.initEs.SyokaiLeaseMonthCnt__c}"/>
+
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="slds-form-element__row">
+                                <div class="slds-form-element slds-size_1-of-2">
+
+                                    <div class="slds-form-element__control">
+                                        <ui:inputDate label="リース終了日" value="{!v.initEs.LeaseEnd__c}"  displayDatePicker="true"/>
+
+                                    </div>
+                                </div>
+                                <div class="slds-form-element slds-size_1-of-2">
+                                    <div class="slds-form-element__control block">
+                                        <ui:inputNumber label="保証金月数（ヶ月）" value="{!v.initEs.DepositMonth__c}"/>
+                                    </div>
+                                </div>
+                            </div>
+							</aura:if>
+                            <div class="slds-form-element__row">
+                                <h3 style="width: 100%" class="slds-section__title slds-theme--shade primaryPaletteBorder test-id__section-header-container">
+                                    <span class="test-id__section-header-title section-header-title slds-p-horizontal--small slds-truncate">サブタイトル 備考</span>
+                                </h3>
+                            </div>
+                            <div class="slds-form-element__row">
+                                <div class="slds-form-element slds-size_1-of-1">
+                                    <div class="slds-form-element__control">
+                                        <ui:inputText label="サブタイトル" value="{!v.initEs.SubTitle__c}" />
+
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="slds-form-element__row">
+                                <div class="slds-form-element slds-size_1-of-1">
+                                    <div class="slds-form-element__control">
+                                        <ui:inputTextArea label="備考" value="{!v.initEs.Remarks__c}" rows="4" />
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+            </div>
+
+			</div>
+            <div class="modal-footer slds-modal__footer " style="border-top:2px solid rgb(221, 219, 218);margin-top:0px;">
+                <div class="forceModalActionContainer--footerAction forceModalActionContainer" >
+                    <lightning:button label="キャンセル" onclick="{!c.close}"/>
+                    <lightning:button class="slds-button slds-button_brand" label="保存" onclick="{!c.handleSaveContact}"/>
+                </div>
+            </div>
+        </div>
+    </div>
+    <lightning:spinner aura:id="mySpinner" variant="brand" class="slds-hide" size="large" style="position: fixed;"/>
+
+</aura:component>

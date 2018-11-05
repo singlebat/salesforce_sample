@@ -1,0 +1,152 @@
+<aura:component implements="force:appHostable,flexipage:availableForAllPageTypes,flexipage:availableForRecordHome,force:hasRecordId,forceCommunity:availableForAllPageTypes,force:lightningQuickAction" access="global" controller="DeliveryController">
+<style>
+.btnLocc {
+	font-size: .8125rem !important;
+}
+
+.slds-radio{
+    height:30px;
+}
+
+.mycontent {
+	padding: 2rem;
+}
+
+.changeRecordTypeLeftColumn {
+	float: left;
+	width: 45%;
+	padding-left: 15%;
+}
+
+.changeRecordTypeRightColumn {
+	float: right;
+	width: 55%;
+}
+</style>
+
+	<!-- 画面タイトル -->
+    <aura:attribute name="welcomekit" type="Boolean" default="false"/>
+
+    <!-- コンポーネント開くと閉じるのコントローラー -->
+    <aura:attribute name="showModal" type="Boolean" default="false"/>
+    <!-- 商品リスト -->
+    <aura:attribute name="productList" type="OpportunityProduct__c[]"/>
+    <!-- 在庫案件商品リスト -->
+    <aura:attribute name="invOppProductList" type="InventoryOpportunityProduct__c[]"/>
+    
+    <!-- 立会者向け -->
+    <aura:attribute name="delivery" type="Delivery__c" default="{'sobjectType':'Delivery__c'}"/>
+    
+    <!-- どのオブジェクトで配送する。 -->
+    <aura:attribute name="objectName" type="String" default=""/>
+    
+    <aura:attribute name="options" type="List" default="[]"/>
+    <aura:attribute name="optionsvalue" type="String" default="new"/>
+    
+    <aura:attribute name="deliveryDate" type="Datetime"/>
+    <aura:attribute name="customersRemarks" type="String"/>
+    
+    <aura:attribute name="step1" type="Boolean" default="true"/>
+    <aura:attribute name="step2" type="Boolean" default="false"/>
+	
+    <aura:handler name="init" value="{!this}" action="{!c.doInit}"/>
+    <aura:handler name="change" value="{!v.showModal}" action="{!c.deliveryApply}"/>
+	
+<div aura:id="deliveryDiv" role="dialog" tabindex="-1" aria-labelledby="header99" class="slds-modal slds-fade-in-open slds-hide">
+    <div class="modal-container" style="margin: 0 auto;max-width: 40rem;margin-top: 10rem;height: 90%;">
+		<div class="modal-header slds-modal__header">
+		    <lightning:buttonIcon onclick="{!c.close}" iconName="utility:close" alternativeText="Close" class="slds-modal__close" variant="bare-inverse" size="large"/>
+			<h2 class="title slds-text-heading--medium" style="margin-top: 6px;">配送依頼</h2>
+		</div>
+		<div class="slds-modal__content slds-p-around_medium" style="height:21.5rem;">
+			<div class="{!if(v.step1 == true,'','slds-hide') + '  slds-clearfix slds-card forceDetailPanel'}" style="padding-top: 1rem;">
+				<div lass="test-id__record-layout-container riseTransitionEnabled">
+					<div class="full forcePageBlock forceRecordLayout">
+					    <div class="slds-grid full forcePageBlockSectionRow">
+						    <div class="changeRecordTypeLeftColumn">
+							    <legend class="form-element__legend slds-form-element__label">配送を選択してください:</legend>
+						    </div>
+						    <div class="changeRecordTypeRightColumn slds-form-element__control">
+						        <lightning:radioGroup name="radioButtonGroup" label="" options="{!v.options}" value="{!v.optionsvalue}"/>
+						    </div>
+						</div>
+					</div>
+				</div>
+			</div>
+			<!-- 配送情報エリア -->
+			<div class="{!if(v.step2 == true,'','slds-hide') + '  slds-clearfix slds-card forceDetailPanel'}">
+				<div lass="test-id__record-layout-container riseTransitionEnabled">
+                    <div class="full forcePageBlock forceRecordLayout">
+                        <div class="slds-grid full forcePageBlockSectionRow">
+                            <div class="slds-has-flexi-truncate slds-p-horizontal_medium full forcePageBlockItem forcePageBlockItemEdit">
+                                <div class="slds-form-element slds-form-element_edit slds-hint-parent slds-p-vertical_xx-small">
+                                    <div class="slds-form-element__control">
+                                        <div class="uiInput uiInputText uiInput--default uiInput--input">
+                                            <ui:inputDateTime label="配送予定日" value="{!v.deliveryDate}" displayDatePicker="true"/>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="slds-has-flexi-truncate slds-p-horizontal_medium full forcePageBlockItem forcePageBlockItemEdit">
+                                <div class="slds-form-element slds-form-element_edit slds-hint-parent slds-p-vertical_xx-small">
+                                    <div class="slds-form-element__control">
+                                        <div class="uiInput uiInputText uiInput--default uiInput--input">
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="slds-grid full forcePageBlockSectionRow">
+                            <div class="slds-has-flexi-truncate slds-p-horizontal_medium full forcePageBlockItem forcePageBlockItemEdit">
+                                <div class="slds-form-element slds-form-element_edit slds-hint-parent slds-p-vertical_xx-small">
+                                    <div class="slds-form-element__control">
+                                        <div class="uiInput uiInputText uiInput--default uiInput--input">
+                                            <label class="label inputLabel uiLabel-left form-element__label uiLabel" data-aura-class="uiLabel">
+                                                <span>立会者</span>
+                                            </label>    
+                                            <force:inputField aura:id="lookup" value="{!v.delivery.TachiaiPerson__c}"/>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="slds-grid full forcePageBlockSectionRow">
+                            <div class="slds-has-flexi-truncate slds-p-horizontal_medium full forcePageBlockItem forcePageBlockItemEdit">
+                                <div class="slds-form-element slds-form-element_edit slds-hint-parent slds-p-vertical_xx-small">
+                                    <div class="slds-form-element__control">
+                                        <div class="uiInput uiInputText uiInput--default uiInput--input">
+                                            <ui:inputCheckbox label="Welcome kit" value="{!v.welcomekit}"/>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="slds-grid full forcePageBlockSectionRow">
+                            <div class="slds-has-flexi-truncate slds-p-horizontal_medium full forcePageBlockItem forcePageBlockItemEdit">
+                                <div class="slds-form-element slds-form-element_edit slds-hint-parent slds-p-vertical_xx-small">
+                                    <div class="slds-form-element__control">
+                                        <div class="uiInput uiInputText uiInput--default uiInput--input">
+                                            <ui:inputTextArea label="特記事項" value="{!v.customersRemarks}" rows="2" />
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+				</div>
+			</div>
+		</div>
+		<div class="modal-footer slds-modal__footer">
+			<div class="{!if(v.step1 == true,'','slds-hide') + '  forceModalActionContainer--footerAction forceModalActionContainer'}">
+			    <lightning:button label="次へ" onclick="{!c.doNext}" class="slds-button slds-button_brand" />
+				
+			</div>
+			<div class="{!if(v.step2 == true,'','slds-hide') + ' forceModalActionContainer--footerAction forceModalActionContainer'}">
+			    <lightning:button label="戻る" onclick="{!c.doBack}" class="slds-button slds-button_brand" />
+				<lightning:button label="配送依頼" onclick="{!c.doDelivery}" class="slds-button slds-button_brand" />
+			</div>
+		</div>
+	</div>
+</div>
+<div aura:id="backdrop" class="slds-backdrop slds-backdrop_open slds-hide"></div>
+</aura:component>

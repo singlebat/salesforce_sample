@@ -1,0 +1,10 @@
+.THIS .small_icon {
+    width: .875rem;
+    height: .875rem;
+}
+.THIS .slds-pill-container{
+	padding:0px;
+}
+.THIS .slds-pill__label{
+	width: 75%;
+}

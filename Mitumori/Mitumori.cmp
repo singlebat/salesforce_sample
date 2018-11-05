@@ -1,0 +1,51 @@
+<aura:component implements="lightning:actionOverride,force:appHostable,flexipage:availableForAllPageTypes,flexipage:availableForRecordHome,force:hasRecordId,force:hasSObjectName,forceCommunity:availableForAllPageTypes,force:lightningQuickActionWithoutHeader" controller="GetRecordTypeController" access="global" >
+    <style>
+    .slds-radio{
+        height:30px;
+    }
+
+    .footer1{
+        border-top: 2px solid rgb(221, 219, 218);
+        text-align: right;
+     }
+  </style>
+
+    <aura:attribute name="showModal" type="Boolean" default="false"/>
+
+    <aura:attribute name="options" type="List" default="[
+    {'label': 'リース', 'value': 'リース'},
+    {'label': '移設（棟内・棟外）', 'value': '移設（棟内・棟外）'},
+    {'label': '販売', 'value': '販売'}
+    ]"/>
+
+    <aura:attribute name="optionsvalue" type="String" default="リース"/>
+    <aura:attribute name="typeId" type="String" default=""/>
+<div class="modal-container">
+    <div class="slds-modal__header">
+        <h2 class="title slds-text-heading--medium">新規見積</h2>
+    </div>
+
+   
+        <div class="forceChangeRecordType" style="height:12.8rem;">
+            <div class="modal__content changeRecordTypeLeftRightContent">
+                <div>
+                    <fieldset class="slds-form-element slds-no-space firefox-fieldset-bug-fix ">
+                        <div class="RecordTypeLeftColumn">
+                            <legend class="form-element__legend slds-form-element__label">レコードタイプを選択:</legend>
+                        </div>
+                        <div class="RecordTypeRightColumn">
+                           <lightning:radioGroup aura:id="mygroup" name="radioButtonGroup"  options="{!v.options }" value="{!v.optionsvalue}"/>
+                        </div>
+                        <div class="clearall"></div>
+                    </fieldset>
+                </div>
+            </div>
+        </div>
+    <c:CreateNewMitumori recordId="{!v.recordId}" sObjectName="{!v.sObjectName}" typeId="{!v.typeId}" showModal="{!v.showModal}"  optionsvalue="{!v.optionsvalue}"></c:CreateNewMitumori>
+    <div class="modal-footer slds-modal__footer footer1">
+        <div class="forceModalActionContainer--footerAction forceModalActionContainer">
+            <lightning:button label="次へ" onclick="{!c.editRecord}" class="slds-button slds-button_brand"/>
+        </div>
+    </div>
+</div>
+</aura:component>

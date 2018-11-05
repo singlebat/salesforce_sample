@@ -1,0 +1,4 @@
+<aura:component >
+<aura:attribute name="product" type="InventoryProduct__c" default="{'sobjectType':'InventoryProduct__c'}" />
+	<force:inputField value="{!v.product.ProductMaster__c}"/>
+</aura:component>
