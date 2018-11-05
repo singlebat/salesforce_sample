@@ -1,0 +1,10 @@
+.THIS {
+	
+}
+
+/*section 切り替えのスタイル*/
+.THIS .slds-icon-utility-switch {
+    width: .875rem;
+    height: 1.875rem;
+    fill: currentColor;
+}

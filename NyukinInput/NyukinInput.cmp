@@ -1,0 +1,203 @@
+<aura:component implements="force:appHostable,flexipage:availableForAllPageTypes,flexipage:availableForRecordHome,force:hasRecordId,force:hasSObjectName,forceCommunity:availableForAllPageTypes,force:lightningQuickAction" 
+controller="PaymentInputController" access="global" >
+	
+	<aura:attribute name="Payways" type="List" default="[
+    {'label': '振込', 'value': '振込'},
+    {'label': 'クレジットカード', 'value': 'クレジットカード'},
+    {'label': '口座引落','value':'口座引落'}
+    ]"/>
+    <aura:attribute name="locals" type="List" default="[
+    {'label': '一致する', 'value': '一致する'},
+    {'label': '一致しない','value':'一致しない'}
+    ]"/>
+    <aura:attribute name="rightRows" type="Integer" default="0"/>
+    <aura:attribute name="errorRows" type="Integer" default="0"/>
+    <aura:attribute name="payList" type="List" default="[]"/>
+    <aura:attribute name="detailList" type="List" default="[]"/>
+    
+    
+    
+	<aura:attribute name="PaywayValue" type="String" default="振込"/>
+	<aura:attribute name="localValue" type="String" default="一致する"/>
+	<aura:attribute name="year" type="Integer" default=""/>
+	<aura:attribute name="month" type="Integer" default=""/>
+	<aura:attribute name="day" type="Integer" default=""/>
+	<aura:attribute name="EstimateId" type="String" default=""/>
+	<aura:attribute name="EstimateName" type="String" default=""/>
+	<aura:attribute name="newBill" type="Billed__c" default="{'sobjectType':'Billed__c'}"/>
+	<aura:attribute name="newEsti" type="Estimate__c" default="{'sobjectType':'Estimate__c'}"/>
+	<!-- 初期化処理 -->
+	<aura:handler name="init" value="{!this}" action="{!c.doInit}"/>
+	
+	<!-- CSV  ファイルのセット -->
+	<aura:attribute name="fileSetList" type="List" default="[]"/> 
+	 <!-- エラーメッセージ -->
+    <aura:attribute name="errorMessage" type="String" default=""/>
+    
+	<div class="modal-container">
+	    <div class="modal-header slds-modal__header">
+	        <h2 class="title slds-text-heading--medium" style="margin-top: 6px;" >入金データ取込</h2>
+	   	</div>
+	   	<div class="slds-scope slds-modal__content forcePageBlockItemEdit" style="margin-top:0px">
+                <div style="padding:2rem;margin-top: -11px;overflow:auto;" class="slds-form slds-form_compound">
+                        <span style="color: red;">{!v.errorMessage}</span>
+				<div class="slds-form-element__group">   	
+					<div class="slds-form-element__row">
+				       <h3 style="width: 100%" class="slds-section__title slds-theme--shade primaryPaletteBorder test-id__section-header-container">
+				           <span class="test-id__section-header-title section-header-title slds-p-horizontal--small slds-truncate">入金取込</span>
+				       </h3>
+				    </div>
+				    <div class="slds-form-element__row">
+						<div class="slds-card__body">                          
+							<ui:message aura:id="message" class="{!(v.error == '' || v.error == null ? ' slds-hide':'')}" severity="error" closable="true">
+								            {!v.error}
+							</ui:message>
+							<div class="slds-media__body slds-truncate" style="margin-bottom: 20px">
+							    <h2>
+							        <a href="javascript:void(0);" class="slds-text-link--reset" >
+							            <span class="slds-text-heading--small" >CSVファイルをドラッグして追加してください：</span>
+							        </a>
+							    </h2>
+							</div>
+							<div>
+							    <div style="width: 250px;height:120px;display: inline-block;">
+							        <div class="dndTargetNew" ondragover="{!c.onDragOver}" ondrop="{!c.onDropNew}">+</div>
+							    </div>
+							</div>                         
+							<lightning:layout multipleRows="true" horizontalAlign="start" class="">
+							    <aura:iteration items="{!v.fileSetList}" var="fileSet" indexVar="index">
+							        <lightning:layoutItem padding="around-small" size="12" smallDeviceSize="3" mediumDeviceSize="3" largeDeviceSize="3">
+							            <div class="image-container">
+							                <div class="{!'file-set ' + (fileSet.error == null || fileSet.error == '' ? 'dndTarget' : 'errorTarget') }">
+							                    <div class="relative">
+							                            <div id="{!fileSet.csvFile.id}" ondragover="{!c.onDragOver}" ondrop="{!c.onDropUpdate}">
+							                                <aura:renderIf isTrue="{!fileSet.csvFile.isShowIcon}">
+							                                    <lightning:icon class="iconImage" iconName="doctype:csv" size="medium"/>
+							                                </aura:renderIf>
+							                                <aura:renderIf isTrue="{!fileSet.csvFile.isShowIcon == false}">
+							                                    <img class="image image1" id="{!fileSet.csvFile.id}" onclick="{!c.openContent}" data-contentDocumentId="{!fileSet.csvFile.contentDocumentID}" src="{!fileSet.csvFile.imageUrl}" />
+							                            </aura:renderIf>
+							                            <!-- ファイル存在してない -->
+							                            <aura:renderIf isTrue="{!fileSet.csvFile == null}">
+							                                <lightning:icon class="iconImage" iconName="doctype:unknown" size="medium"/>
+							                            </aura:renderIf>
+							                             <aura:renderIf isTrue="{!fileSet.csvFile != null}">
+							                                <button onclick="{!c.deleteFile}" id="{!fileSet.csvFile.id}" title="csv" name="{!index}" class="slds-button slds-button-neutral deleteIcon uiButton" type="button" data-aura-class="uiButton">×</button>
+							                                 </aura:renderIf>
+							                                <ui:inputText class="myinput" value="{!fileSet.csvFile.name}" aura:id="filename" placeholder="CSVファイルなし"/>
+							                            </div>
+							                            <aura:set attribute="else">
+							                                <aura:renderIf isTrue="{!fileSet.csvFile.isShowIcon}">
+							                                    <lightning:icon class="iconImage" iconName="doctype:pdf" size="medium"/>                   
+							                                </aura:renderIf>
+							                                <ui:outputURL value="{!'/'+fileSet.csvFile.id}" label="{!fileSet.csvFile.name}" /><br />
+							                            </aura:set>
+							                    </div>                        
+							                </div>
+							            </div>
+							        </lightning:layoutItem>
+							    </aura:iteration>
+							</lightning:layout>
+							</div>
+							<div style="margin-left: 100px;width: 100px;height:120px;">
+								<lightning:button class="slds-button slds-button_brand" label="取込" onclick="{!c.saveCSV}"/> 
+							</div>
+							<div style="margin-left: 50px;width: 100px;height:120px;">
+								<lightning:button class="slds-button slds-button_brand" label="預り金相殺" onclick="{!c.dopayment}"/> 
+							</div>
+				   	</div>
+				                  
+					<div class="slds-form-element__row">
+				       <h3 style="width: 100%" class="slds-section__title slds-theme--shade primaryPaletteBorder test-id__section-header-container">
+				           <span class="test-id__section-header-title section-header-title slds-p-horizontal--small slds-truncate">取込結果</span>
+				       </h3>
+				   	</div>
+				   	<div class="slds-form-element__row">
+						<table style="width:100%">
+							<tr width="100%" style="vertical-align:bottom;">
+								<td width="12%">正常件数</td>
+								<td width="5%"></td>
+								<td width="25%"> 
+								<lightning:input aura:id="expenseform" 
+						                             name="expensename"
+						                             value="{!v.rightRows}"/> 
+                             	</td>
+                             	<td width="3%">件</td>
+                             	<td width="35%"></td>
+                             	<td width="20%"></td>
+							</tr>
+							<tr width="100%" style="vertical-align:bottom;">
+							    <td width="12%">失敗件数</td>
+							    <td width="5%"></td>
+								<td width="25%"> 
+								<lightning:input aura:id="expenseform" 
+						                             name="expensename"
+						                             value="{!v.errorRows}"/> 
+                             	</td>
+                             	<td width="3%">件</td>
+                             	<td width="35%"></td>
+                             	<td width="20%">
+                             	</td>
+							</tr>
+						</table>
+				   	</div>
+				   	<div class="slds-form-element__row">
+				   		<table style="width:100%">
+					   		<aura:iteration items="{!v.payList}" var="error" indexVar="index">
+								<tr>{!error}</tr>
+							</aura:iteration>
+						</table>
+				   	</div>
+				   	<div class="slds-form-element__row">
+				   		<table style="width:100%" border="1">
+							<tr>
+								<td width="1%">NO</td>
+								<td width="5%">データ区分</td>
+                             	<td width="9%">（＊）照会番号</td>
+                             	<td width="5%">勘定日</td>
+                             	<td width="5%">起算日</td>
+                             	<td width="9%">金額</td>
+                             	<td width="9%">うち他店券金額</td>
+                             	<td width="9%">（＊）振込依頼人コード</td>
+                             	<td width="9%">振込依頼人名</td>
+                             	<td width="9%">（＊）仕向銀行名</td>
+                             	<td width="9%">（＊）仕向店名</td>
+                             	<td width="9%">（＊）取消区分</td>
+                             	<td width="9%">（＊）EDI 情報</td>
+                             	<td width="3%">ダミー</td>
+							</tr>
+							<tr>
+								<td colspan="14" style="text-align: center;">エラーメッセージ</td>
+							</tr>
+							<aura:iteration items="{!v.detailList}" var="detail" indexVar="index">
+								<tr>
+									<td width="1%">{!index+1}</td>
+									<td width="5%">2</td>
+	                             	<td width="9%">{!detail.referenceNo__c}</td>
+	                             	<td width="5%">{!detail.PaymentDate__c}</td>
+	                             	<td width="5%">{!detail.startDate__c}</td>
+									<td width="9%" style="text-align: right;">
+	                             		<force:inputField value="{!detail.Payment__c}"></force:inputField>
+	                             	</td>
+	                             	<td width="9%" style="text-align: right;">
+	                             		<force:inputField value="{!detail.Pocketpayment__c}"></force:inputField>
+	                             	</td>
+	                             	<td width="9%">{!detail.personCode__c}</td>
+	                             	<td width="9%">{!detail.Bank_account_Nominee__c}</td>
+	                             	<td width="9%">{!detail.Financial_Name__c}</td>
+	                             	<td width="9%">{!detail.Financial_branch__c}</td>
+	                             	<td width="9%">{!detail.cancelType__c}</td>
+	                             	<td width="9%">{!detail.EDI__c}</td>
+	                             	<td width="3%">{!detail.dami__c}</td>
+								</tr>
+								<tr>
+									<td colspan="14" style="text-align: center;">{!detail.errorMessage__c}</td>
+								</tr>
+							</aura:iteration>
+						</table>
+					</div>
+				</div>
+			</div>
+		</div>
+    </div>
+</aura:component>

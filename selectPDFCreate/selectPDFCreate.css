@@ -1,0 +1,25 @@
+.THIS {
+	box-sizing: border-box; 
+}
+
+.THIS .slds-top {
+	margin-top: 10px;
+	text-align: right;
+}
+
+.THIS .mitumoritd {
+	vertical-align: bottom;
+	padding: 2px;
+}
+
+.THIS .changeRecordTypeLeftColumn {
+	float: left;
+	width: 50%;
+	padding-right: 1.5rem;
+	text-align: right;
+}
+
+.THIS .changeRecordTypeRightColumn {
+	float: left;
+	width: 25%;
+}

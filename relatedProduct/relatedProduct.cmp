@@ -1,0 +1,41 @@
+<aura:component implements="flexipage:availableForAllPageTypes"
+                access="global">
+<style>
+    .hide1{
+        display:none;
+    }
+</style>
+    <aura:attribute name="registInit" type="Boolean" default="false"/>
+    <aura:attribute name="slideIndex" type="Integer" default="0"/>
+    <aura:attribute name="slideWidth" type="Integer" default="130"/>
+    <aura:attribute name="slides" type="Object[]"/>
+
+	<aura:handler name="init" value="{!this}" action="{!c.doInit}" />
+    <aura:if isTrue="{!v.registInit==true}">
+<div role="dialog" tabindex="-1" aria-labelledby="header99" class="slds-modal slds-fade-in-open">
+    <div class="modal-container slds-modal__container">
+      <div class="slds-modal__header">
+            <lightning:buttonIcon onclick="{!c.closeRegistInit}" iconName="utility:close" alternativeText="Close" class="slds-modal__close" variant="bare-inverse" size="large"/>
+            <h2 id="header99" class="slds-text-heading--medium">関連商品情報</h2>
+          </div>
+      <div class="slds-modal__content slds-p-around_medium" id="modal-content-id-1">
+                          <div class="{! v.slideWidth>120 ? 'filmstrip' : 'hide1'}" style="{! 'margin-left: -' + (v.slideIndex * v.slideWidth) + 'px;'}">
+                              <aura:iteration items="{!v.slides}" var="slide" indexVar="index">
+                                  <div class="slide" style="{!'width:' + v.slideWidth + 'px;background-image:url(' + slide + ');height:100%;margin-left:1%;'}"/>
+                              </aura:iteration>
+                          </div>
+                          <div class="{! v.slideWidth>120 ? 'btn prev x-large' : 'hide1'}">
+				          <lightning:buttonIcon variant="border-filled" onclick="{!c.prev}" size="large" iconName="utility:chevronleft" />
+                          </div>
+                          <div class="{! v.slideWidth>120 ? 'btn next x-large' : 'hide1'}">
+		                    <lightning:buttonIcon variant="border-filled" onclick="{!c.next}" size="large" iconName="utility:chevronright" />
+                          </div>
+      </div>
+      <div class="slds-modal__footer">
+        <button class="slds-button slds-button_neutral">閉じる</button>
+      </div>
+    </div>
+</div>
+ <div class="slds-backdrop slds-backdrop_open"></div>
+    </aura:if>
+</aura:component>

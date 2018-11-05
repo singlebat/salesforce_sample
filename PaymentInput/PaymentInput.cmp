@@ -1,0 +1,124 @@
+<aura:component implements="force:appHostable,flexipage:availableForAllPageTypes,flexipage:availableForRecordHome,force:hasRecordId,force:hasSObjectName,forceCommunity:availableForAllPageTypes,force:lightningQuickAction" 
+      controller="PaymentInputController" access="global" >
+<aura:handler name="init" value="{!this}" action="{!c.doInit}"/>
+<aura:set attribute="error" value=""/>
+
+<aura:attribute name="showSpinner" type="boolean" default="false" />
+<aura:attribute name="isLoading" type="boolean" default="false" />
+<aura:attribute name="isEdit" type="boolean" default="false" />
+
+
+<aura:attribute name="csvNum" type="Integer" default="0"/>
+<aura:attribute name="excNum" type="Integer" default="0"/>
+
+<aura:attribute name="maxFileSize" type="Integer"/>
+
+<aura:attribute name="csvProgress" type="Integer" default="0"/>
+<aura:attribute name="excProgress" type="Integer" default="0"/>
+
+
+
+<!-- CSV  ファイルのセット -->
+<aura:attribute name="fileSetList" type="List" default="[]"/> 
+<!-- 全てのファイル -->
+<aura:attribute name="files" type="PaymentInput__c[]" />
+<!-- エラーメッセージリスト -->
+<!--<aura:attribute name="errList" type="ErrorMessage__c[]" default=""/>-->
+
+<article class="slds-card">
+    <div class="slds-card__header slds-grid header">
+        <header class="slds-media slds-media--center slds-has-flexi-truncate">
+            <div class="slds-media__figure">
+                <lightning:icon iconName="standard:file" size="small"/>
+            </div>
+            <div class="slds-media__body slds-truncate">
+                <h2>
+                    <a href="javascript:void(0);" class="slds-text-link--reset">
+                        <span class="slds-text-heading--small">取込ボタンを押下し、プライサーファイルCSVをドラッグ＆ドロップ後、「保存」ボタンを押下してください。</span>
+                    </a>
+                </h2>
+            </div>
+        </header>
+        <div class="slds-no-flex">
+            <div class="spinnerContainer">
+                <aura:renderIf isTrue="{!v.isEdit}"> 
+                    <ui:button class="button" label="キャンセル" press="{!c.reload}"/>
+                    <ui:button class="button" label="保存" press="{!c.saveFiles}"/>
+                <aura:set attribute="else">  
+                      <ui:button class="button" label="取込" press="{!c.editMode}"/>
+                </aura:set>
+                </aura:renderIf> 
+            </div>
+        </div>
+    </div>
+    <div class="slds-card__body">
+        <ui:message aura:id="message" class="{!(v.error == '' || v.error == null ? ' slds-hide':'')}" severity="error" closable="true">
+            {!v.error}
+        </ui:message>
+
+        <aura:renderIf isTrue="{!v.isEdit}">
+            <div>
+                <div style="width: 40%;display: inline-block;">
+                    <div class="dndTargetNew" ondragover="{!c.onDragOver}" ondrop="{!c.onDropNew}">+</div>
+                </div>
+
+                <aura:renderIf isTrue="{!v.isLoading}">
+                    <div style="width: 50%;display: inline-block;">
+                        <div>CSV取込状況 : </div>
+                        <lightning:progressBar value="{!v.csvProgress}" variant="circular" size="medium"/>
+                        <div style="margin-top: 5px;">Excel取込状況 : </div>
+                        <lightning:progressBar value="{!v.excProgress}" variant="circular" size="medium"/>
+                    </div>
+                </aura:renderIf>
+            </div>
+            
+            
+        </aura:renderIf>
+
+        <lightning:layout multipleRows="true" horizontalAlign="start" class="">
+
+            <aura:iteration items="{!v.fileSetList}" var="fileSet" indexVar="index">
+                <lightning:layoutItem padding="around-small" size="12" smallDeviceSize="3" mediumDeviceSize="3" largeDeviceSize="3">
+                    <div class="image-container">
+                        <div class="{!'file-set ' + (fileSet.error == null || fileSet.error == '' ? 'dndTarget' : 'errorTarget') }">
+                            <!-- csv -->
+                            <div class="relative">
+                                <aura:renderIf isTrue="{!v.isEdit}">
+                                    <div id="{!fileSet.csvFile.id}" ondragover="{!c.onDragOver}" ondrop="{!c.onDropUpdate}">
+                                        <aura:renderIf isTrue="{!fileSet.csvFile.isShowIcon}">
+                                            <lightning:icon class="iconImage" iconName="doctype:csv" size="medium"/>
+                                        </aura:renderIf>
+                                        <aura:renderIf isTrue="{!fileSet.csvFile.isShowIcon == false}">
+                                            <img class="image image1" id="{!fileSet.csvFile.id}" onclick="{!c.openContent}" data-contentDocumentId="{!fileSet.csvFile.contentDocumentID}" src="{!fileSet.csvFile.imageUrl}" />
+                                        </aura:renderIf>
+                                        <!-- ファイル存在してない -->
+                                        <aura:renderIf isTrue="{!fileSet.csvFile == null}">
+                                            <lightning:icon class="iconImage" iconName="doctype:unknown" size="medium"/>
+                                        </aura:renderIf>
+                                         <aura:renderIf isTrue="{!fileSet.csvFile != null}">
+                                            <button onclick="{!c.deleteFile}" id="{!fileSet.csvFile.id}" title="csv" name="{!index}" class="slds-button slds-button-neutral deleteIcon uiButton" type="button" data-aura-class="uiButton">×</button>
+                                         </aura:renderIf>
+                                        <ui:inputText class="myinput" value="{!fileSet.csvFile.name}" aura:id="filename" placeholder="CSVファイルなし"/>
+                                    </div>
+                                    <aura:set attribute="else">
+                                        <aura:renderIf isTrue="{!fileSet.csvFile.isShowIcon}">
+                                            <lightning:icon class="iconImage" iconName="doctype:csv" size="medium"/>                   
+                                        </aura:renderIf>
+                                        <ui:outputURL value="{!'/'+fileSet.csvFile.id}" label="{!fileSet.csvFile.name}" /><br />
+                                    </aura:set>
+                                </aura:renderIf>
+                            </div>                        
+                        </div>
+                    </div>
+                </lightning:layoutItem>
+            </aura:iteration>
+        </lightning:layout>
+
+        <!--<c:OpportunitylistSubClosingInfoDownload errList="{!v.errList}" />-->
+    </div>
+
+    <lightning:spinner aura:id="mySpinner" variant="brand" class="slds-hide"/>
+</article>
+
+
+</aura:component>

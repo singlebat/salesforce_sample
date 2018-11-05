@@ -1,0 +1,36 @@
+<aura:component implements="flexipage:availableForAllPageTypes"
+                access="global">
+
+    <style>
+            .button-rela{
+                z-index:1000;
+          		position:absolute;
+          		right:1.5px;
+        		top:182.5px;
+                background-color: #e6e8db8c;
+            }
+    </style>
+    <aura:attribute name="fullScreen" type="Boolean" default="false"/>
+    <aura:attribute name="imgUrl" type="Object[]" default=""/>
+    <aura:attribute name="slides" type="Object[]"/>
+
+	<aura:handler name="init" value="{!this}" action="{!c.doInit}" />
+	<aura:handler name="change" value="{!v.imgUrl}" action="{!c.itemsChange}" />
+
+        <!-- <lightning:buttonIcon onclick="{!c.fullScreen}" size="large" iconName="utility:expand" class="button-rela" />  -->
+        
+        <aura:if isTrue="{!v.fullScreen==true}">
+            <div role="dialog" tabindex="-1" aria-labelledby="header43" class="slds-modal slds-fade-in-open">
+                <div class="slds-modal__container">
+                    <c:PictureCarousel slides="{!v.slides}"/>
+                </div>
+                
+                <div class="btn slds-modal__close close x-large">
+                    <lightning:buttonIcon variant="border-filled" onclick="{!c.closeDialog}" size="large" iconName="utility:close" />
+                </div>
+                
+            </div>
+            <div class="slds-backdrop slds-backdrop--open"></div>
+        </aura:if>
+
+</aura:component>

@@ -1,0 +1,283 @@
+<aura:component implements="force:appHostable,flexipage:availableForAllPageTypes,flexipage:availableForRecordHome,force:hasRecordId,forceCommunity:availableForAllPageTypes,force:lightningQuickActionWithoutHeader" 
+access="global">
+    <style type="text/css">
+    .slds-modal__container {
+        width: 75%;
+        max-width: 68rem;
+        min-width: 40rem;
+    }
+    
+    .slds-p-around_medium, .slds-p-around--medium {
+        padding: 0rem !important;
+    }
+    .cuf-content{
+        padding:0rem 0rem !important;
+    }
+    .slds-modal__content{
+        overflow-y: hidden;
+    }
+    .block .form-element__label{
+        display: block !important;
+    }
+    </style>
+    
+    <aura:attribute name="recordId" type="Id" />
+    <aura:attribute name="sObjectName" type="String" />
+    <!-- 更新結果オプション -->
+    <aura:attribute name="updateResultOpts" type="List" default="['A.すべて更新', 'B.すべて解約', 'C.すべて買取','D.一部更新・解約・買取']"/>
+    <!-- 満了/途中解約 -->
+    <aura:attribute name="ExpirationOrCancellOpts" type="List" default="['満了', '途中解約']"/>
+    <!-- 保証金との相殺 -->
+    <aura:attribute name="HoshokinSousaiOpts" type="List" default="['希望する', '希望しない']"/>
+    <!-- エラーメッセージ -->
+    <aura:attribute name="errorMessage" type="String" default=""/> 
+    <!-- LDS向け -->
+    <aura:attribute name="newAgreement" type="Agreement__c" default="{'sobjectType':'Agreement__c'}"/>
+    <aura:attribute name="simpleNewAgreement" type="Agreement__c" default="{'sobjectType':'Agreement__c'}"/>
+    <aura:attribute name="AgreementError" type="String" />
+    <force:recordData aura:id="AgreementEditor"
+    layoutType="FULL"     
+    recordId="{!v.recordId}"
+    targetRecord="{!v.newAgreement}"                   
+    targetFields="{!v.simpleNewAgreement}"
+    targetError="{!v.AgreementError}"
+    recordUpdated="{!c.handleRecordUpdated}"
+    mode="EDIT" />
+    
+    <div class="modal-container">
+        <div class="modal-header slds-modal__header">
+            <h2 class="title slds-text-heading--medium" style="margin-top: 6px;" >保証金返金とダメージ料金請求処理</h2>
+        </div>
+        <div class="slds-hide">
+            <lightning:input type="text" label="ステータス" value="{!v.simpleNewAgreement.Status__c}"/>
+            <lightning:input type="text" label="承認状況" value="{!v.simpleNewAgreement.ApprovalStatus__c}"/>
+        </div>
+        <div class="slds-scope slds-modal__content forcePageBlockItemEdit" style="margin-top:0px">
+            <div style="padding:2rem;margin-top: -11px;overflow:auto;height:34.5rem;" class="slds-form slds-form_compound">
+                <span style="color: red;">{!v.errorMessage}</span>
+                <div class="slds-form-element__group">
+                    <!-- 更新結果 -->
+                    <div class="slds-form-element__row">
+                        <h3 style="width: 100%" class="slds-section__title slds-theme--shade primaryPaletteBorder test-id__section-header-container">
+                            <span class="test-id__section-header-title section-header-title slds-p-horizontal--small slds-truncate">更新結果</span>
+                        </h3>
+                    </div>
+                    <div class="slds-form-element__row">
+                        <div class="slds-form-element slds-size_1-of-4">
+                            <div class="slds-form-element__control">
+                                <lightning:select label="満了/途中解約" disabled="true" value="{!v.simpleNewAgreement.ExpirationOrCancell__c}">
+                                    <aura:iteration items="{!v.ExpirationOrCancellOpts}" var="ExpirationOrCancellOpt">
+                                        <option text="{!ExpirationOrCancellOpt}" value="{!ExpirationOrCancellOpt}"></option>
+                                    </aura:iteration>
+                                </lightning:select>
+                            </div>
+                        </div>
+                        <div class="slds-form-element slds-size_1-of-4">
+                            <div class="slds-form-element__control">
+                                <lightning:select label="更新結果" disabled="true" value="{!v.simpleNewAgreement.UpdateResult__c}" >
+                                    <aura:iteration items="{!v.updateResultOpts}" var="updateResultOpt">
+                                        <option text="{!updateResultOpt}" value="{!updateResultOpt}"></option>
+                                    </aura:iteration>
+                                </lightning:select>
+                            </div>
+                        </div>
+                    </div>
+                        
+                    <!-- 保証金関連内容 -->
+                    <div class="{!if(v.simpleNewAgreement.NextProductUpdCnt__c > 0,'slds-hide','')}">
+                        <div class="slds-form-element__row">
+                            <h3 style="width: 100%" class="slds-section__title slds-theme--shade primaryPaletteBorder test-id__section-header-container">
+                                <span class="test-id__section-header-title section-header-title slds-p-horizontal--small slds-truncate">保証金情報</span>
+                            </h3>
+                        </div>
+                        <div class="slds-form-element__row">
+                            <div class="slds-form-element slds-size_1-of-4">
+                                <div class="slds-form-element__control">
+                                    <lightning:select label="保証金との相殺" disabled="true" value="{!v.simpleNewAgreement.HoshokinSousai__c}">
+                                        <aura:iteration items="{!v.HoshokinSousaiOpts}" var="HoshokinSousaiOpt">
+                                            <option text="{!HoshokinSousaiOpt}" value="{!HoshokinSousaiOpt}"></option>
+                                        </aura:iteration>
+                                    </lightning:select>
+                                </div>
+                            </div>
+                            <div class="slds-form-element slds-size_1-of-4">
+                                <div class="slds-form-element__control">
+                                    <label class="label inputLabel uiLabel-left form-element__label uiLabel" style="display: inherit;">
+                                        <span>保証金月数（ヶ月）</span>
+                                    </label>
+                                    <ui:outputText value="{!v.simpleNewAgreement.DepositMonth__c}" />
+                                </div>
+                            </div>
+                            <div class="slds-form-element slds-size_1-of-4">
+                                <div class="slds-form-element__control">
+                                    <label class="label inputLabel uiLabel-left form-element__label uiLabel" style="display: inherit;">
+                                        <span>保証金</span>
+                                    </label>
+                                    <ui:outputCurrency currencySymbol="￥" value="{!v.simpleNewAgreement.Hoshokin__c}"/>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- 途中解約情報 -->
+                    <div class="{!if(v.simpleNewAgreement.ExpirationOrCancell__c != '満了','','slds-hide')}">
+                        <div class="slds-form-element__row">
+                            <h3 style="width: 100%" class="slds-section__title slds-theme--shade primaryPaletteBorder test-id__section-header-container">
+                                <span class="test-id__section-header-title section-header-title slds-p-horizontal--small slds-truncate">途中解約情報</span>
+                            </h3>
+                        </div>
+                        <div class="slds-form-element__row">
+                            <div class="slds-form-element slds-size_1-of-4">
+                                <div class="slds-form-element__control">
+                                    <label class="label inputLabel uiLabel-left form-element__label uiLabel" style="display: inherit;">
+                                        <span>残存リース期間開始日</span>
+                                    </label>
+                                    <ui:outputDateTime value="{!v.simpleNewAgreement.ZanzonStartDate__c}" format="yyyy/MM/dd"/>
+                                </div>
+                            </div>
+                            <div class="slds-form-element slds-size_1-of-4">
+                                <div class="slds-form-element__control">
+                                    <label class="label inputLabel uiLabel-left form-element__label uiLabel" style="display: inherit;">
+                                        <span>残存リース期間終了日</span>
+                                    </label>
+                                    <ui:outputDateTime value="{!v.simpleNewAgreement.ZanzonEndDate__c}" format="yyyy/MM/dd"/>
+                                </div>
+                            </div>
+                            <div class="slds-form-element slds-size_1-of-4">
+                                <div class="slds-form-element__control">
+                                    <ui:inputNumber label="残存リース料" value="{!v.simpleNewAgreement.ZanzonLeaseAmount__c}" format="￥###,###,##0" change="{!c.caculateSumData}"/>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- 買取情報 -->
+                    <div class="{!if(v.simpleNewAgreement.ProductKaitoriCnt__c > 0,'','slds-hide')}">
+                        <div class="slds-form-element__row">
+                            <h3 style="width: 100%" class="slds-section__title slds-theme--shade primaryPaletteBorder test-id__section-header-container">
+                                <span class="test-id__section-header-title section-header-title slds-p-horizontal--small slds-truncate">買取情報</span>
+                            </h3>
+                        </div>
+                        <div class="slds-form-element__row">
+                            <div class="slds-form-element slds-size_1-of-4">
+                                <div class="slds-form-element__control">
+                                    <label class="label inputLabel uiLabel-left form-element__label uiLabel" style="display: inherit;">
+                                        <span>買取商品件数(集計)</span>
+                                    </label>
+                                    <ui:outputText value="{!v.simpleNewAgreement.ProductKaitoriCnt__c}" />
+                                </div>
+                            </div>
+                            <div class="slds-form-element slds-size_1-of-4">
+                                <div class="slds-form-element__control">
+                                    <label class="label inputLabel uiLabel-left form-element__label uiLabel" style="display: inherit;">
+                                        <span>買取商品金額(集計)</span>
+                                    </label>
+                                    <ui:outputCurrency currencySymbol="￥" value="{!v.simpleNewAgreement.ProductKaitoriAmnout__c}"/>
+                                </div>
+                            </div>
+                            <div class="slds-form-element slds-size_1-of-4">
+                                <div class="slds-form-element__control">
+                                    <label class="label inputLabel uiLabel-left form-element__label uiLabel" style="display: inherit;">
+                                        <span>買取商品金額消費税</span>
+                                    </label>
+                                    <ui:outputCurrency currencySymbol="￥" value="{!v.simpleNewAgreement.ProductKaitoriTax__c}"/>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- 保証金関連金額 -->
+                    <div class="slds-form-element__row">
+                        <h3 style="width: 100%" class="slds-section__title slds-theme--shade primaryPaletteBorder test-id__section-header-container">
+                            <span class="test-id__section-header-title section-header-title slds-p-horizontal--small slds-truncate">保証金関連金額</span>
+                        </h3>
+                    </div>
+                    <div class="slds-form-element__row">
+                        <div class="slds-form-element slds-size_1-of-4">
+                            <div class="slds-form-element__control">
+                                <ui:inputNumber label="(保証金返金)ダメージ料金" value="{!v.simpleNewAgreement.damageMoney__c}" format="￥###,###,##0" change="{!c.caculateSumData}"/>
+                            </div>
+                        </div>
+                        <div class="slds-form-element slds-size_1-of-4">
+                            <div class="slds-form-element__control">
+                                <ui:inputNumber label="(保証金返金)個別送料" value="{!v.simpleNewAgreement.DeliveryFee__c}" format="￥###,###,##0" change="{!c.caculateSumData}"/>
+                            </div>
+                        </div>
+                        <div class="slds-form-element slds-size_1-of-4">
+                            <div class="slds-form-element__control">
+                                <ui:inputNumber label="(保証金返金)その他料金" value="{!v.simpleNewAgreement.OthersFee__c}" format="￥###,###,##0" change="{!c.caculateSumData}"/>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="slds-form-element__row">
+                        <div class="slds-form-element slds-size_1-of-4">
+                            <div class="slds-form-element__control">
+                                <label class="label inputLabel uiLabel-left form-element__label uiLabel" style="display: inherit;">
+                                    <span>(保証金返金)差引</span>
+                                </label>
+                                <ui:outputCurrency currencySymbol="￥" value="{!v.simpleNewAgreement.TotalFee__c}"/>
+                            </div>
+                        </div>
+                        <div class="slds-form-element slds-size_1-of-4">
+                            <div class="slds-form-element__control">
+                                <ui:inputNumber label="(保証金返金)過入金" value="{!v.simpleNewAgreement.OverPaymentAmount__c}" format="￥###,###,##0" change="{!c.caculateSumData}"/>
+                            </div>
+                        </div>
+                        <div class="slds-form-element slds-size_1-of-4">
+                            <div class="slds-form-element__control">
+                                <label class="label inputLabel uiLabel-left form-element__label uiLabel" style="display: inherit;">
+                                    <span>(保証金返金)返金金額</span>
+                                </label>
+                                <ui:outputCurrency currencySymbol="￥" value="{!v.simpleNewAgreement.HenkinAmount__c}"/>
+                            </div>
+                        </div>
+                        <div class="slds-form-element slds-size_1-of-4">
+                            <div class="slds-form-element__control">
+                                <label class="label inputLabel uiLabel-left form-element__label uiLabel" style="display: inherit;">
+                                    <span>(保証金返金)不足請求金額</span>
+                                </label>
+                                <ui:outputCurrency currencySymbol="￥" value="{!v.simpleNewAgreement.FusokuAmount__c}"/>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="slds-form-element__row">
+                        <div class="slds-form-element slds-size_1-of-4">
+                            <div class="{!if(v.simpleNewAgreement.NextProductUpdCnt__c > 0,'slds-hide','')}">
+                                <div class="slds-form-element__control">
+                                    <ui:inputDate label="返金日" aura:id="ReturnHoshokinDate" value="{!v.simpleNewAgreement.ReturnHoshokinDate__c}" required="true" displayDatePicker="true"/>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="slds-form-element slds-size_3-of-4">
+                            <div class="slds-form-element__control">
+                                <ui:inputTextArea value="{!v.simpleNewAgreement.HoshokinRemarks__c}" label="保証金返金備考" rows="2"/>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- 申請コメント -->
+                    <div class="slds-form-element__row">
+                        <h3 style="width: 100%" class="slds-section__title slds-theme--shade primaryPaletteBorder test-id__section-header-container">
+                            <span class="test-id__section-header-title section-header-title slds-p-horizontal--small slds-truncate">承認申請コメント</span>
+                        </h3>
+                    </div>
+                    <div class="slds-form-element__row">
+                        <div class="slds-form-element slds-size_1-of-1">
+                            <div class="slds-form-element__control">
+                                <ui:inputTextArea value="{!v.simpleNewAgreement.HoshokinComment__c}" label="承認申請コメント" rows="2"/>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="modal-footer slds-modal__footer">
+            <div class="forceModalActionContainer--footerAction forceModalActionContainer">
+                <lightning:button label="キャンセル" onclick="{!c.close}"/>
+                <lightning:button class="slds-button slds-button_brand" label="承認申請" onclick="{!c.handleSaveContact}"/>
+            </div>
+        </div>
+    </div>
+    <lightning:spinner aura:id="mySpinner" variant="brand" class="slds-hide" size="large"/>
+</aura:component>

@@ -1,0 +1,23 @@
+<aura:component access="global">
+<style>
+
+</style>
+    <aura:attribute name="slideIndex" type="Integer" default="0"/>
+    <aura:attribute name="slideWidth" type="Integer" default="0"/>
+    <aura:attribute name="slides" type="Object[]"/>
+
+    <div aura:id="gallery" class="gallery">
+        <div class="filmstrip" style="{! 'margin-left: -' + (v.slideIndex * v.slideWidth) + 'px'}">
+            <aura:iteration items="{!v.slides}" var="slide" indexVar="index">
+                <div class="slide" style="{!'width:' + v.slideWidth + 'px;background-image:url(' + slide + ')'}"></div>
+            </aura:iteration>            
+        </div>
+        <div class="{! v.slides != null ? 'btn prev x-large' : 'hide1'}">
+				<lightning:buttonIcon variant="border-filled" onclick="{!c.prev}" size="large" iconName="utility:chevronleft" alternativeText="Settings"/>
+        </div>
+        <div class="{! v.slides != null ? 'btn next x-large' : 'hide1'}">
+			<lightning:buttonIcon variant="border-filled" onclick="{!c.next}" size="large" iconName="utility:chevronright" alternativeText="Settings"/>
+        </div>
+    </div>
+        
+</aura:component>

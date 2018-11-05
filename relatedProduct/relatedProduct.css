@@ -1,0 +1,58 @@
+.THIS {
+}
+.THIS .slds-modal__container {
+    width: 80%;
+    max-width: 900px;
+    min-width: 480px;
+}
+.THIS .modal-container{
+	padding-top:100px;
+
+}
+.THIS * {
+	box-sizing: border-box;
+}
+.THIS .slds-modal__content{
+	height:30%;
+	overflow: hidden;
+}
+
+.THIS .filmstrip {
+	/*-webkit-transform: translate3d(0, 0, 0);*/
+    transform: translate3d(0, 0, 0);
+    transition: all .5s ease-in-out;
+    height: 100%;
+	display: inline-block;
+	white-space: nowrap;
+}
+
+.THIS .slide {
+    height: 100%;
+	display: inline-block;
+    background-size: cover;
+    background-repeat: no-repeat;
+    background-position: center;
+}
+
+.THIS .btn {
+    position: absolute;
+}
+
+.THIS .btn.next {
+    top: 50%;
+    right: 6px;
+}
+
+.THIS .btn.prev {
+    top: 50%;
+    left: 6px;
+}
+
+.THIS .btn.x-large .slds-button {
+    width: 3.5rem;
+    height: 3.5rem;
+}
+.THIS .btn.x-large .slds-button__icon {
+    width: 1.7rem;
+    height: 1.7rem;
+}

@@ -1,0 +1,696 @@
+<aura:component controller="OppProductCreateController"
+	implements="force:appHostable,flexipage:availableForAllPageTypes,flexipage:availableForRecordHome,force:hasRecordId,forceCommunity:availableForAllPageTypes,force:lightningQuickAction"
+	access="global">
+	<aura:attribute name="registInit" type="Boolean" default="false" />
+	<aura:attribute name="fullScreen" type="Boolean" default="false" />
+	<aura:attribute name="fullScreenUrl" type="Object[]"/>
+	<aura:attribute name="categoryHeight" type="Integer" default="120" />
+	<aura:attribute name="PDomHeight" type="Integer" default="26" />
+	<aura:attribute name="seeFlag" type="Boolean" default="true" />
+	<aura:attribute name="estimatecId" type="String" default=""/>
+	<aura:attribute name="section_show" type="Boolean" default="true"/>
+
+	<!-- カテゴリー検索 -->
+	<aura:attribute name="category" type="String" default="" />
+	<aura:attribute name="oldCategory" type="String" default="" />
+
+	<!-- Package商品 用-->
+	<aura:attribute name="packageProductOpts" type="List" default="[]"/>
+	<aura:attribute name="productMasterId" type="String" default=""/>
+	<aura:attribute name="packageProductName" type="String" default=""/>
+	<aura:attribute name="invProduct" type="InventoryProduct__c" default="{'sobjectType':'InventoryProduct__c'}"/>
+	<aura:attribute name="packageStatus" type="List" default="[{'label': '--なし--', 'value': '--なし--'},
+	                                                           {'label': '作成中', 'value': '作成中'},
+                                                               {'label': '作成完了', 'value': '作成完了'}]"/>
+
+	<!-- 検索条件 -->
+	<aura:attribute name="searchCondition" type="Object" default="" />
+    <!-- 在庫商品明細 -->
+    <aura:attribute name="InventoryProductDetailList" type="OppProductCreateController.InventoryProductDetail[]" />
+    <!-- カテゴリーマスタからの分類集合 -->
+    <aura:attribute name="bigTypeList" type="OppProductCreateController.BigType[]" />
+    <!-- 中分類 -->
+    <aura:attribute name="mediumTypes" type="List[]"/>
+    <!-- 小分類 -->
+    <aura:attribute name="smallTypes" type="List[]"/>
+	<aura:handler name="init" value="{!this}" action="{!c.doInit}" />
+<style>
+.imgdiv {
+	height: 240px;
+	width: 190px;
+	margin-left: 20px;
+	margin-top: 10px;
+	margin-bottom: 40px;
+	float: left;
+}
+
+.imgdiv img {
+	cursor: pointer;
+}
+
+.buttons {
+	margin-left: 166px;
+	margin-top: 5px;
+}
+
+.slds-checkbox{
+	display: inline-flex !important;
+	width: 46px;
+}
+.slds-form-element__label{
+    margin-right: 0.5rem;
+}
+
+.divfont1 {
+	/*font-family: 'MS UI Gothic';*/
+	padding: 0.5rem;
+}
+
+.fontsize1 {
+	font-size: 12.5px;
+}
+
+.height1 {
+	height:100px;
+}
+
+.rtnBtn {
+	right: 3rem !important;
+	bottom: 1rem !important;
+	position: fixed !important;
+	padding: 0.2rem 2rem;
+	box-shadow: 0px 0px 10px #9c9c9c;
+	-moz-box-shadow: 0px 0px 10px #9c9c9c;
+	-webkit-box-shadow: 0px 0px 10px #9c9c9c;
+}
+
+.clearBtn {
+	left: 1rem;
+}
+
+.no-padding {
+	padding: 0px;
+}
+
+.imgcss {
+	width: 100%;
+	height: 100%;
+}
+
+.outdiv1 {
+	position: absolute;
+	bottom: 0;
+	left: 0;
+	right: 0;
+	height: 30px;
+}
+
+.pull-search {
+	top: 13px;
+	left: 13rem;
+	position: absolute;
+}
+
+.search-div {
+	/*margin-left: auto;
+	margin-right: auto;
+	max-width: 30rem;*/
+}
+
+.search-div .uiInputText {
+	width: 70%;
+}
+
+.search-div button.slds-button {
+	margin-left: 1rem;
+}
+
+.search-div .slds-icon-utility-search {
+	margin-left: -1.5rem;
+}
+
+.sldpopover {
+	display: none;
+	top: 41px;
+	padding-top: 15px;
+	position: absolute;
+	left: 15px;
+	height: 0px;
+	transition: height 1s;
+	-moz-transition: height 1s; /* Firefox 4 */
+	-webkit-transition: height 1s; /* Safari 和 Chrome */
+	-o-transition: height 1s; /* Opera */
+}
+
+.sldpopoverImg {
+	display: none;
+	top: 0px;
+	position: absolute;
+	left: 192px;
+	height: 0px;
+	transition: height 1s;
+	-moz-transition: height 1s; /* Firefox 4 */
+	-webkit-transition: height 1s; /* Safari 和 Chrome */
+	-o-transition: height 1s; /* Opera */
+}
+
+.slds-popover_panel.slds-nubbin_left-top:before, .slds-popover_panel.slds-nubbin_left-top:after,
+	.slds-popover_panel.slds-nubbin--left-top:before, .slds-popover_panel.slds-nubbin--left-top:after,
+	.slds-popover_panel.slds-nubbin_right-top:before, .slds-popover_panel.slds-nubbin_right-top:after,
+	.slds-popover_panel.slds-nubbin--right-top:before, .slds-popover_panel.slds-nubbin--right-top:after,
+	.slds-popover_panel.slds-nubbin_top-left:before, .slds-popover_panel.slds-nubbin_top-left:after,
+	.slds-popover_panel.slds-nubbin--top-left:before, .slds-popover_panel.slds-nubbin--top-left:after,
+	.slds-popover_panel.slds-nubbin_top-right:before, .slds-popover_panel.slds-nubbin_top-right:after,
+	.slds-popover_panel.slds-nubbin--top-right:before, .slds-popover_panel.slds-nubbin--top-right:after,
+	.slds-popover--panel.slds-nubbin_left-top:before, .slds-popover--panel.slds-nubbin_left-top:after,
+	.slds-popover--panel.slds-nubbin--left-top:before, .slds-popover--panel.slds-nubbin--left-top:after,
+	.slds-popover--panel.slds-nubbin_right-top:before, .slds-popover--panel.slds-nubbin_right-top:after,
+	.slds-popover--panel.slds-nubbin--right-top:before,
+	.slds-popover--panel.slds-nubbin--right-top:after, .slds-popover--panel.slds-nubbin_top-left:before,
+	.slds-popover--panel.slds-nubbin_top-left:after, .slds-popover--panel.slds-nubbin--top-left:before,
+	.slds-popover--panel.slds-nubbin--top-left:after, .slds-popover--panel.slds-nubbin_top-right:before,
+	.slds-popover--panel.slds-nubbin_top-right:after, .slds-popover--panel.slds-nubbin--top-right:before,
+	.slds-popover--panel.slds-nubbin--top-right:after {
+	background-color: rgb(255, 255, 255);
+}
+
+.child_popover, .childChild_popover {
+	position: absolute;
+	left: 249px;
+	top: -1px;
+	width: 0px;
+	display: none;
+	transition: width 1s;
+	-moz-transition: width 1s; /* Firefox 4 */
+	-webkit-transition: width 1s; /* Safari 和 Chrome */
+	-o-transition: width 1s; /* Opera */
+}
+
+.slds-media__figure:hover .sldpopover, .sldpopover:hover {
+	display: block;
+	height: auto;
+}
+
+.imghouver:hover .sldpopoverImg, .sldpopoverImg:hover {
+	display: block;
+	height: auto;
+}
+
+.parent_select:hover .child_popover, .child_popover:hover {
+	display: block;
+	width: 250px;
+}
+
+.parent_select:hover .aParent {
+	font-weight: bold;
+	color: rgb(255, 163, 0);
+}
+
+.parent_select:hover .aParent svg {
+	fill: rgb(129, 129, 149) !important;
+}
+
+.child_select:hover .childChild_popover, .childChild_popover:hover {
+	display: block;
+	width: 250px;
+}
+
+.child_select:hover .aChild {
+	font-weight: bold;
+	color: rgb(255, 163, 0);
+}
+
+.child_select:hover .aChild svg {
+	fill: rgb(129, 129, 149) !important;
+}
+
+.childChild_select:hover .aChildChild {
+	font-weight: bold;
+	color: rgb(255, 163, 0);
+}
+
+.icon-color {
+	font-size: 13px;
+}
+
+.slds-icon-utility-chevronright {
+	float: right !important;
+}
+
+.slds-m-around_medium, .slds-m-around--medium {
+	margin: 0rem;
+}
+
+.posit {
+	position: relative;
+}
+
+.button-select {
+	float: right;
+	margin-top: -2px;
+	width: 61px;
+	padding-right: 4px;
+	padding-left: 4px;
+}
+
+.size {
+	width: 30% !important;
+	padding: 0px !important;
+	margin-top: 2px;
+}
+
+.slds-card__header {
+	padding-top: 0.75rem !important;
+}
+
+.icon-color svg {
+	fill: rgb(210, 206, 206) !important;
+}
+
+.minTd{
+min-width:100px;
+width:auto;
+}
+
+/*.slds-brand-band{
+   height:auto;/*lightning:spinnerは全画面向け*/
+}*/
+</style>
+	<aura:attribute name="currentStatus" type="List"
+		default="[
+                  {'label': 'リース未入庫', 'value': 'リース未入庫'},
+                  {'label': '在庫 + 未メンテ', 'value': '在庫 + 未メンテ'}
+                 ]" />
+	<aura:attribute name="currentStatusValue" type="List" default="" />
+
+	<aura:attribute name="rank" type="List"
+		default="[]" />
+	<aura:attribute name="rankValue" type="List" default="" />
+    
+	<div class="c-container">
+        <lightning:spinner aura:id="mySpinner" variant="brand" class="slds-hide" size="large" style="position:fixed;"/>
+		<lightning:layout horizontalAlign="space">
+			<lightning:layoutItem flexibility="auto" padding="around-small" size="2">
+			    <aura:if isTrue="{!or (v.estimatecId == '',v.estimatecId == null)}">
+			        <article class="slds-card">
+			            <div class="slds-card__header">
+			                <h2>
+			                    <span class="slds-text-heading_small slds-card__header-link slds-truncate">新規Package商品</span>
+			                </h2>
+			            
+			                <div class="slds-media__figure" style="padding-bottom: 1rem;">
+			                    <lightning:select label="Package商品選択:" value="{!v.productMasterId}">
+                                        <aura:iteration items="{!v.packageProductOpts}" var="packageProduct">
+                                            <option text="{!packageProduct.label}" value="{!packageProduct.value}"></option>
+                                        </aura:iteration>
+                                </lightning:select>
+			                </div>
+			                <lightning:button class="uiButton--brand" label="新規Package" onclick="{!c.createPackage}"/>
+			            </div>
+			        </article>
+			        <article class="slds-card">
+			            <div class="slds-card__header">
+			                <h2>
+			                    <span class="slds-text-heading_small slds-card__header-link slds-truncate">Package商品変更</span>
+			                </h2>
+			            
+			                <div class="slds-media__figure" style="padding-bottom: 1rem;">
+			                    <ui:inputText label="Package商品番号:" value="{!v.packageProductName}">
+							    </ui:inputText>
+							    <lightning:select value="{!v.invProduct.PackageStatus__c}" label="状態">
+                                                <aura:iteration items="{!v.packageStatus}" var="status">
+                                                    <option text="{!status.label}" value="{!status.value}"></option>
+                                                </aura:iteration>
+                                </lightning:select>
+			                </div>
+			                <lightning:button class="uiButton--brand" label="確定" onclick="{!c.packageProductSelect}"/>
+			                <lightning:button class="uiButton--brand" label="保存" onclick="{!c.packageProductSave}"/>
+			            </div>
+			        </article>
+			    </aura:if>
+				<article class="slds-card">
+					<div class="slds-card__header slds-grid selectmenu">
+						<!-- <header class="slds-media slds-media_center slds-has-flexi-truncate"> -->
+							<div class="slds-media__figure">
+								<lightning:icon iconName="standard:task" size="medium"
+									alternativeText="Indicates approval" />
+                                <div class="sldpopover">
+                                    <section class="panel-heading slds-popover slds-popover_panel slds-nubbin_top-left" role="dialog" style="{!'height:' + v.categoryHeight + 'px;width: 250px;background-color:rgb(255, 255, 255);'}">
+                                        <div class="slds-popover__header" style="padding-left: 0px; padding-top: 0.5rem;background-color:rgb(255, 255, 255)">
+                                            <div class="slds-p-horizontal_small slds-size_1-of-2 slds-p-bottom_x-small" style="width: 250px; padding-right: 0px;">
+                                                <dl>
+                                                    <dd>
+                                                        <!-- 大分類を繰り返して、設定する -->
+                                                        <aura:iteration items="{!v.bigTypeList}" var="bigtype">
+                                                            <p aura:id="bigTypePDom" class="slds-truncate parent_select" style="{!'width: 250px;height:'+ v.PDomHeight + 'px;'}">
+                                                                <aura:html tag="a" class="icon-color aParent" id="{!bigtype.bigTypeName}" onclick="{!c.categorySearch}">{!bigtype.bigTypeName}
+                                                                    <!-- 中分類がなければ、右の矢印を表示しません -->
+                                                                    <aura:if isTrue="{!bigtype.mediumTypeList != null}">
+                                                                        <lightning:icon size="xx-small" iconName="utility:chevronright" />
+                                                                    </aura:if>
+                                                                </aura:html>
+                                                                <!-- 該当大分類の中分類がなければ、中分類エリアを表示しません -->
+                                                                <aura:if isTrue="{!bigtype.mediumTypeList != null}">
+                                                                <section aria-labelledby="panel-heading-id" aura:id="parentsection" class="slds-popover slds-popover_panel child_popover" role="dialog" style="{!'height:' + v.categoryHeight + 'px;background-color:rgb(255, 255, 255);'}">
+                                                                    <div class="slds-popover__header"
+                                                                        style="padding-left: 0px; padding-top: 0.5rem;background-color:rgb(255, 255, 255)">
+                                                                        <div class="slds-p-horizontal_small slds-size_1-of-2 slds-p-bottom_x-small" style="width: 250px; padding-right: 0px;">
+                                                                            <dl>
+                                                                                <dd>
+                                                                                    <h2 class="title slds-text-heading--medium" style="color:rgb(255,130,0);">{!bigtype.bigTypeName}</h2>
+                                                                                    <!-- 中分類を繰り返して、設定する -->
+                                                                                    <aura:iteration items="{!bigtype.mediumTypeList}" var="mediumType">
+                                                                                        <p class="slds-truncate child_select" style="{!'height:'+ v.PDomHeight + 'px;'}">
+                                                                                            <aura:html tag="a" class="icon-color aChild" id="{!bigtype.bigTypeName + ' > ' + mediumType.mediumTypeName}" onclick="{!c.categorySearch}">{!mediumType.mediumTypeName}
+                                                                                                <!-- 小分類がなければ、右の矢印を表示しません -->
+                                                                                                <aura:if isTrue="{!mediumType.smallTypeList != null}">
+                                                                                                    <lightning:icon size="xx-small" iconName="utility:chevronright" variant="error" />
+                                                                                                </aura:if>
+                                                                                            </aura:html>
+                                                                                            <!-- 該当中分類の小分類がなければ、小分類エリアを表示しません -->
+                                                                                            <aura:if isTrue="{!mediumType.smallTypeList != null}">
+                                                                                            <section aria-labelledby="panel-heading-id" aura:id="childsection" class="slds-popover slds-popover_panel childChild_popover"
+                                                                                                role="dialog" style="{!'height:' + v.categoryHeight + 'px;background-color:rgb(255, 255, 255);'}">
+                                                                                                <div class="slds-popover__header"
+                                                                                                    style="padding-left: 0px; padding-top: 0.5rem;background-color:rgb(255, 255, 255)">
+                                                                                                    <div class="slds-p-horizontal_small slds-size_1-of-2 slds-p-bottom_x-small" style="width: 250px; padding-right: 0px;">
+                                                                                                        <dl>
+                                                                                                            <dd>
+                                                                                                                <h2 class="title slds-text-heading--medium" style="color:rgb(255,130,0);">{!mediumType.mediumTypeName}</h2>
+                                                                                                                <!-- 小分類を繰り返して、設定する -->
+                                                                                                                <aura:iteration items="{!mediumType.smallTypeList}" var="smallType">
+                                                                                                                    <p class="slds-truncate childChild_select" style="{!'height:'+ v.PDomHeight + 'px;'}">
+                                                                                                                        <aura:html tag="a" class="icon-color aChildChild" id="{!bigtype.bigTypeName + ' > ' + mediumType.mediumTypeName + ' > ' + smallType}" onclick="{!c.categorySearch}" >{!smallType} </aura:html>
+                                                                                                                    </p>
+                                                                                                                </aura:iteration>
+                                                                                                            </dd>
+                                                                                                        </dl>
+                                                                                                    </div>
+                                                                                                </div>
+                                                                                            </section>
+                                                                                            </aura:if>
+                                                                                        </p>
+                                                                                    </aura:iteration>
+                                                                                </dd>
+                                                                            </dl>
+                                                                        </div>
+                                                                    </div>
+                                                                </section>
+                                                                </aura:if>
+                                                            </p>
+                                                        </aura:iteration>
+                                                    </dd>
+                                                </dl>
+                                            </div>
+                                        </div>
+                                    </section>
+                                </div>
+							</div>
+							<div class="slds-media__body">
+								<h2>
+									<a href="javascript:void(0);"
+										class="slds-card__header-link slds-truncate"
+										title="[object Object]"> <span
+										class="slds-text-heading_small">検索条件</span>
+									</a>
+									<lightning:button class="clearBtn uiButton--brand" label="クリア" onclick="{!c.clear}"/>
+
+								</h2>
+							</div>
+						<!-- </header> -->
+					</div>
+					<div class="slds-box divfont1">
+						<div>
+							<div class="slds-box  divfont1 "
+								style="width: 100%; float: left;">
+								<span class="slds-text-heading_small fontsize1 slds-card__header-link">ランク</span>
+								<br />
+								<lightning:checkboxGroup aura:id="mygroup" name="rankGroup"
+									label="" options="{! v.rank }" value="{! v.rankValue }" />
+								<br /> 
+								<span class="slds-text-heading_small fontsize1 slds-card__header-link">価値価格帯</span>
+								<br />
+								<ui:inputNumber format="###,###,##0"
+									value="{!v.searchCondition.priceLowerLimit}" />
+								<label> 〜 </label>
+								<ui:inputNumber format="###,###,##0"
+									value="{!v.searchCondition.priceUpLimit}" />
+
+								<br />
+								<br /> 
+								<span class="slds-text-heading_small fontsize1 slds-card__header-link">サイズ</span>
+								<br /><span>奥行</span>
+								<ui:inputNumber value="{!v.searchCondition.depthLowerLimit}" class="size" />
+								<label> 〜 </label>
+								<ui:inputNumber value="{!v.searchCondition.depthUpLimit}" class="size" />
+								<br /> <span>幅&nbsp;&nbsp;&nbsp;&nbsp;</span>
+                                <ui:inputNumber value="{!v.searchCondition.widthLowerLimit}" class="size" />
+								<label> 〜 </label>
+								<ui:inputNumber value="{!v.searchCondition.widthUpLimit}" class="size" />
+								<br /> <span>高さ</span>
+                                <ui:inputNumber value="{!v.searchCondition.heightLowerLimit}" class="size" />
+								<label> 〜 </label>
+								<ui:inputNumber value="{!v.searchCondition.heightUpLimit}" class="size" />
+
+								<br />
+								<br /> <a href="javascript:void(0);"
+									class="slds-card__header-link slds-truncate "
+									title="[object Object]"> <span
+									class="slds-text-heading_small fontsize1">現状区分</span>
+								</a> <br />
+
+								<lightning:checkboxGroup aura:id="mygroup" name="checkboxGroup" class="currents"
+									label="" options="{! v.currentStatus }" value="{! v.currentStatusValue }" />
+
+								<br /> 
+								<span class="slds-text-heading_small fontsize1 slds-card__header-link">入庫予定日</span>
+								<br />
+								<ui:inputDate aura:id="slt__orderDate" label="" value="{!v.searchCondition.nyukoyoteibiLowerLimit}"
+									displayDatePicker="true" />
+								<label> 〜 </label>
+								<ui:inputDate aura:id="slt__orderDate" label="" value="{!v.searchCondition.nyukoyoteibiUpLimit}"
+									displayDatePicker="true" />
+
+								<br /> 
+								<span class="slds-text-heading_small fontsize1 slds-card__header-link">短期利用可能</span>
+								<ui:inputCheckbox value="{!v.searchCondition.shortTerm}"/>
+								
+								<br /> 
+								<span class="slds-text-heading_small fontsize1 slds-card__header-link">情報非表示</span>
+								<ui:inputCheckbox value="{!v.seeFlag}"/>
+
+							</div>
+							<div style="clear: both"></div>
+						</div>
+					</div>
+				</article>
+			</lightning:layoutItem>
+			<lightning:layoutItem flexibility="auto" padding="around-small" size="10">
+				<article class="slds-card">
+					<div class="slds-card__header slds-grid">
+						<header
+							class="slds-media slds-media_center slds-has-flexi-truncate">
+							<div class="slds-media__figure">
+								<lightning:icon iconName="standard:lead_list" size="medium"
+									alternativeText="Indicates approval" />
+							</div>
+							<div class="slds-media__body">
+						            <a href="javascript:void(0);"
+									   class="slds-card__header-link slds-truncate"
+									   title="[object Object]"> <span
+									   class="slds-text-heading_small">検索結果</span>
+									</a>
+								<!-- 検索の位置 -->
+								<div class="search-div" style="display:inline-table;margin-left:10%;width: 50%;">
+										<ui:inputText aura:id="keyIpt" placeholder="在庫注文明細を検索" value="{!v.searchCondition.searchBar}" keyup="{!c.doKeySearch}">
+										</ui:inputText>
+										<lightning:icon iconName="utility:search" size="x-small" />
+										<!-- 検索ボタンをクリックすると、検索処理を行う -->
+										<lightning:button label="検索" class="uiButton--brand" onclick="{!c.doSearch}" />
+							    </div>
+							    <div style="display:-webkit-inline-box;">
+								    <span class="slds-text-heading_small fontsize1 slds-card__header-link">スペシャル商品</span>
+								    <ui:inputCheckbox value="{!v.searchCondition.specialFlg}"/>
+								</div>
+							</div>
+						</header>
+					</div>
+					
+					<div style="margin-top: 2rem;"></div>
+					    <div style="top: 3rem;padding-left:0.75rem" class="{!(v.section_show) ? 'slds-section  slds-is-open' : 'slds-section'}" role="grid">
+							<h3 class="slds-section__title">
+								<lightning:button class="slds-button slds-section__title-action" onclick="{!c.changesection}">
+									<lightning:icon class="slds-section__title-action-icon slds-button__icon slds-button__icon_left" iconName="utility:switch" size="xx-small" />
+									<span style="padding-left: 5px;" class="slds-truncate" title="Section Title">カテゴリー選択</span>
+								</lightning:button>
+							</h3>
+                            
+							<div class="slds-section__content">
+							    <div style="top: 1rem;">
+							        <span style="font-weight: bold;font-size: 15px;">カテゴリー&nbsp;:&nbsp;</span>{!v.category}&nbsp;&nbsp;
+						        </div>
+							    <table id="resizableTable" class="resizableTable slds-table slds-table_fixed-layout slds-table_bordered" style="margin-top: 1rem;">
+							        <col width="10%"/>
+							        <col width="90%"/>
+                                    <tbody>
+										<tr class="slds-hint-parent">
+											<td style="text-align: center;">大分類</td>
+											<td style="white-space:normal;">
+											    <aura:iteration items="{!v.bigTypeList}" var="bigtype" indexVar="b">
+											        <aura:html tag="a" class="icon-color aParent" id="{!bigtype.bigTypeName}" name="{!b}" onclick="{!c.bigtypeSelect}">{!bigtype.bigTypeName}
+                                                    </aura:html>
+                                                    &nbsp;&nbsp;
+											    </aura:iteration>
+											</td>
+										</tr>
+										<tr class="slds-hint-parent">
+										    <td style="text-align: center;">中分類</td>
+											<td style="white-space:normal;">
+											    <aura:iteration items="{!v.mediumTypes}" var="mediumType" indexVar="m">
+											        <aura:html tag="a" class="icon-color aParent" id="{!mediumType.mediumTypeName}" name="{!m}" onclick="{!c.mediumTypeSelect}">{!mediumType.mediumTypeName}
+                                                    </aura:html>
+                                                    &nbsp;&nbsp;
+											    </aura:iteration>
+											</td>
+										</tr>
+										<tr class="slds-hint-parent">
+										    <td style="text-align: center;">小分類</td>
+											<td style="white-space:normal;">
+											    <aura:iteration items="{!v.smallTypes}" var="smallType">
+											        <aura:html tag="a" class="icon-color aParent" id="{!smallType}" onclick="{!c.smallTypeSelect}">{!smallType}
+                                                    </aura:html>
+                                                    &nbsp;&nbsp;
+											    </aura:iteration>
+											</td>
+										</tr>
+									</tbody>
+                                </table>
+							</div>
+						</div>
+
+                    <!-- セット品コンポーネント -->
+					<c:relatedProduct registInit="{!v.registInit}"></c:relatedProduct>
+
+					<!-- <lightning:tabset >
+						<lightning:tab > -->
+							<!-- <aura:set attribute="label">
+								<span style="font-size: 16px">在庫商品</span>
+							</aura:set> -->
+							<div style="border-bottom: 2px solid;border-bottom-color:rgb(221, 219, 218);height:1.5rem;"></div>
+							<div style="padding:1rem 0;">
+							<!-- 商品拡大コンポーネント -->
+							<c:pictureGalleryCard fullScreen="{!v.fullScreen}" imgUrl="{!v.fullScreenUrl}"></c:pictureGalleryCard>
+							    <!-- 在庫商品リストを繰り返して、表示する -->
+								<aura:iteration items="{!v.InventoryProductDetailList}" var="item">
+									<div class="imgdiv">
+										<div class="no-padding posit" style="height: 170px; width: 180px; float: left">
+											<div class="imghouver" style="height: 170px; width: 180px; float: left">
+											    <aura:html tag="img" class="imgcss" src="{!item.imgUrl}" name="{!item.detailNo}" onclick="{!c.fullScreen}" />
+												<div class="sldpopoverImg">
+													<section class="panel-heading slds-popover slds-popover_panel slds-nubbin_left" role="dialog" style="width:auto;">
+														<div class="slds-popover__header">
+															<footer class="slds-grid slds-wrap slds-grid_pull-padded">
+																<dl>
+																	<dd>
+                                                                    <table>
+                                                                        <tr>
+                                                                            <td class="minTd">商品番号:</td>
+                                                                            <td class="minTd">{!item.Name}</td>
+                                                                        </tr>
+                                                                        <tr>
+                                                                            <td class="minTd">商品名:</td>
+                                                                            <td class="minTd">{!item.productName}</td>
+                                                                        </tr>
+                                                                        <tr>
+                                                                            <td class="minTd">ランク:</td>
+                                                                            <td class="minTd">{!item.rank}</td>
+                                                                        </tr>
+                                                                        <tr>
+                                                                            <td class="minTd">型番:</td>
+                                                                            <td class="minTd">{!item.modelNumber}</td>
+                                                                        </tr>
+                                                                        <tr>
+                                                                            <td class="minTd">サイズ:</td>
+                                                                            <td class="minTd">{!item.size}</td>
+                                                                        </tr>
+                                                                        <tr>
+                                                                            <td class="minTd">メーカー定価:</td>
+                                                                            <td class="minTd">
+                                                                                <ui:outputCurrency value="{!item.makerPrice}"/>
+                                                                            </td>
+                                                                        </tr>
+                                                                        <tr>
+                                                                            <td class="minTd">メーカー名:</td>
+                                                                            <td class="minTd">{!item.makerName}</td>
+                                                                        </tr>
+                                                                        <tr>
+                                                                            <td class="minTd">現状区分:</td>
+                                                                            <td class="minTd">{!item.currentStatus}</td>
+                                                                        </tr>
+                                                                        <tr>
+                                                                            <td class="minTd">入庫日:</td>
+                                                                            <td class="minTd">{!item.receiptDate}</td>
+                                                                        </tr>
+                                                                        <tr>
+                                                                            <td class="minTd">購入日:</td>
+                                                                            <td class="minTd">{!item.receiptDate}</td>
+                                                                        </tr>
+                                                                        <tr class="{!if(v.seeFlag,'slds-hide','')}">
+                                                                            <td class="minTd">仕入率:</td>
+                                                                            <td class="minTd">{!item.purchaseRate}{!if(item.purchaseRate != null , '%','')}</td>
+                                                                        </tr>
+                                                                        <tr class="{!if(v.seeFlag,'slds-hide','')}">
+                                                                            <td class="minTd">回収率:</td>
+                                                                            <td class="minTd">60%</td>
+                                                                        </tr>
+                                                                    </table>
+																	</dd>
+																</dl>
+															</footer>
+														</div>
+													</section>
+												</div>
+											</div>
+										</div>
+
+										<div class="no-padding posit"
+											style="height: 110px; width: 180px; float: left">
+											<div class="lower-third">
+												<h1 class="truncate"></h1>
+												<div>{!item.productName}&nbsp;&nbsp;{!item.rank}</div>
+												<div>{!item.currentStatus}&nbsp;&nbsp;{!item.currentStatusAuxiliary}</div>
+												<div>
+													 {!item.makerName}&nbsp;&nbsp;<ui:outputCurrency value="{!item.makerPrice}"/>
+												</div>
+												<div>
+													 {!if(or(item.size == null,item.size == '') , '　',item.size)}
+												</div>
+											</div>
+											<div class="outdiv1">
+										        <a onclick="{!c.openRelatedProduct}">{!item.setNo}</a>
+										        <!-- 選択ボタンが選択と選択済みの切り替え処理 -->
+												<aura:if isTrue="{!item.selectKBN==true}">
+													<lightning:button value="{!item.detailNo}" class="uiButton--brand  button-select"
+														label="選択済" onclick="{!c.toggleSelect}"/>
+													<aura:set attribute="else">
+														<lightning:button label="選択" value="{!item.detailNo}" class="button-select" onclick="{!c.toggleSelect}"/>
+													</aura:set>
+												</aura:if>
+											</div>
+										</div>
+									</div>
+								</aura:iteration>
+								<div style="clear: both"></div>
+								<div class='height1'></div>
+							</div>
+						<!-- </lightning:tab>
+					</lightning:tabset> -->
+				</article>
+			</lightning:layoutItem>
+		</lightning:layout>
+	</div>
+    
+	<aura:if isTrue="{!and (v.estimatecId != '',v.estimatecId != null)}">
+	    <lightning:button iconName="utility:back" class="rtnBtn uiButton--brand" label="戻る" onclick="{!c.doBack}" />
+	</aura:if>
+</aura:component>

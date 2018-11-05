@@ -1,0 +1,58 @@
+<aura:component controller="PictureDragController" implements="flexipage:availableForAllPageTypes,force:hasRecordId,force:hasSObjectName" access="global">
+
+    <!-- <ltng:require scripts="{!$Resource.jquery}"/>  -->
+    <!-- Id of the Record the page hosting this component is showing -->
+
+    <aura:handler event="force:refreshView" action="{!c.onInit}" />
+
+    <style>
+        .file {
+            margin-left: 5px;
+            position: relative;
+            display: inline-block;
+            background: #D0EEFF;
+            border: 1px solid #99D3F5;
+            border-radius: 4px;
+            padding: 4px 12px;
+            overflow: hidden;
+            color: #1E88C7;
+            text-decoration: none;
+            text-indent: 0;
+            line-height: 20px;
+        }
+        .file input {
+            position: absolute;
+            font-size: 100px;
+            right: 0;
+            top: 0;
+            opacity: 0;
+        }
+        .file:hover {
+            background: #AADFFD;
+            border-color: #78C3F3;
+            color: #004974;
+            text-decoration: none;
+        }
+    </style>
+
+    <aura:attribute name="recordId" type="Id"/>
+    <aura:attribute name="sObjectName" type="String"/>
+
+    <aura:attribute name="pictureSrc" type="String" 
+            default="https://s3-us-west-1.amazonaws.com/sfdc-demo/image-placeholder.png"/>
+
+    <aura:attribute name="message" type="String" default="写真をここにドラッグできます"/>
+
+    <aura:handler name="init" value="{!this}" action="{!c.onInit}" />
+
+    <div ondragover="{!c.onDragOver}" ondrop="{!c.onDrop}">
+        <img src="{!v.pictureSrc}"/>
+        <p>{!v.message}</p>
+    </div>
+    
+    
+    <span class="file">画像選択
+        <input type="file" aura:id="file" onchange="{!c.save}" accept="image/jpeg,image/x-png"/>
+    </span>
+
+</aura:component>

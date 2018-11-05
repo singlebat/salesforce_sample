@@ -1,0 +1,346 @@
+<aura:component implements="force:hasRecordId,force:LightningQuickActionWithoutHeader,force:hasSObjectName,forceCommunity:availableForAllPageTypes" access="global" controller="PdfGeneratorController">
+<style>
+    .slds-modal__container {
+        width: 75%;
+        max-width: 65rem;
+        min-width: 40rem;
+    }
+    .slds-radio{
+        height:30px;
+    }
+
+    .slds-p-around_medium, .slds-p-around--medium {
+        padding: 0rem !important;
+    }
+    .cuf-content{
+        padding:0rem 0rem !important;
+    }
+    
+    .modal-body{
+        position: relative;
+        /*padding-top: 3.7rem !important;*/
+    }
+    
+    .slds-modal__content{
+        overflow-y: hidden;
+    }
+    
+    table.table1  td{text-align: left;}
+</style>
+    <aura:attribute name="recordId" type="String"  />
+    <aura:attribute name="sObjectName" type="String"/>
+    <aura:attribute name="languages" type="List" default="[
+    {'label': '日本語', 'value': '日本語'},
+    {'label': '英語','value':'英語'}
+    ]"/>
+    <aura:attribute name="options" type="List" default="[
+    {'label': '見積依頼書及び取置き依頼書','value':'Mitsumoridepend'},
+    {'label': '御見積書', 'value': 'Mitsumori'},
+    {'label': 'お支払予定表', 'value': 'Shiharai'},
+    {'label': '注文書兼注文請書', 'value': 'Order'},
+    {'label': '契約書','value':'Contract'},
+    {'label': '請求書', 'value': 'Invoice'}
+    ]"/>
+    <aura:attribute name="contractOptions" type="List" default="[
+    {'label': '期間満了通知書','value':'LeaseTermConfirm'},
+    {'label': '解約精算確認書','value':'Kaiyaku'},                                                  
+    {'label': '覚書', 'value': 'Oboegaki'},
+    {'label': '保証金', 'value': 'Hosyokin'},
+    {'label': '請求書', 'value': 'Invoice'}
+    ]"/>
+    <aura:attribute name="QuotationStatus" type="String" default=""/>
+    <aura:attribute name="value" type="String" default="Mitsumoridepend"/>
+    <aura:attribute name="contractPDFValue" type="String" default="LeaseTermConfirm"/>
+    <aura:attribute name="step1" type="Boolean" default="true"/>
+    <aura:attribute name="step2" type="Boolean" default="false"/>
+    <aura:attribute name="allCheck" type="Boolean" default="true"/>
+    <aura:attribute name="languagesValue" type="String" default="日本語"/>
+    <!-- 見積オブジェクト対象 -->
+    <aura:attribute name="estimate" type="Estimate__c"/>
+    <!-- 更新オブジェクト対象 -->
+    <aura:attribute name="agreement" type="Agreement__c"/>
+    <!-- ハンドル:入金期間終了日を変わる場合 -->
+    <aura:handler name="change" value="{!v.agreement.NyukinKiaknEndDate__c}" action="{!c.changeNyukinKiaknEndDate}" />
+    <!-- 入金済金額算出用 -->
+    <aura:attribute name="PaymentDetails" type="PaymentDetails__c[]"/>
+    
+    <!-- 更新しないで印刷フラグ -->
+    <aura:attribute name="updateFlg" type="Boolean" default="false"/>
+    <!-- 初回請求作成 -->
+    <aura:attribute name="MonthlyPrintFlag" type="Boolean" default="false"/>
+    
+    <!-- 型番(見積表示条件) -->
+    <aura:attribute name="modelNumberHide" type="Boolean" default="true"/>
+     <!-- トラックキャンセル料(見積表示条件) -->
+    <aura:attribute name="truckCancelHide" type="Boolean" default="true"/>
+     <!-- 新規契約時の必要書類(見積表示条件) -->
+    <aura:attribute name="newAgreemntHide" type="Boolean" default="false"/>
+     <!-- 入金確認後に商品手配(見積表示条件) -->
+    <aura:attribute name="hatyuNyukinHide" type="Boolean" default="false"/>
+     <!--  振込先口座情報(見積表示条件) -->
+    <aura:attribute name="furikomiKozaHide" type="Boolean" default="false"/>
+    
+    <!-- 納期確認及び見積依頼書 : 仕入先表示リスト -->
+	<aura:attribute name="purchaseList" type="PdfGeneratorController.Purchase[]"/>
+
+	<aura:attribute name="pdfLable" type="String"  />
+	
+	<aura:attribute name="haisouTypeOpts" type="List" default="['入庫', '顧客直送']"/>
+	
+	<!-- エラーメッセージ -->
+    <aura:attribute name="errorMessage" type="String" default=""/>
+	
+	<!-- 初期化処理 -->
+	<aura:handler name="init" value="{!this}" action="{!c.doInit}"/>
+
+	<div class="modal-container  mycontainer">
+		<div class="modal-header slds-modal__header">
+			<h2 class="title slds-text-heading--medium" style="margin-top: 6px;">帳票作成</h2>
+		</div>
+		<div class="slds-scope slds-modal__content forcePageBlockItemEdit" style="height: 14.5rem;">
+		    <div style="padding-left: 30px;"><span style="color: red;">{!v.errorMessage}</span></div>
+			<!-- step1 -->
+			<div class="{!if(v.step1 == true,'','slds-hide') + '  slds-clearfix'}" style="margin-top:1.5rem;">
+				<div lass="test-id__record-layout-container riseTransitionEnabled">
+					<div class="full forcePageBlock forceRecordLayout">
+						<div class="changeRecordTypeLeftColumn">
+							<legend style="text-align: left">帳票種類を選択してください:</legend>
+							<div style="margin-right: 50px">
+								<lightning:select value="{!v.languagesValue}">
+                                    <aura:iteration items="{!v.languages}" var="language">
+                                        <option text="{!language.label}" value="{!language.value}"></option>
+                                    </aura:iteration>
+                                </lightning:select>
+							</div>
+						</div>
+						<div class="changeRecordTypeRightColumn slds-form-element__control">
+						    <aura:if isTrue="{!v.sObjectName=='Estimate__c'}">
+						        <lightning:radioGroup name="radioButtonGroup"
+								label="" options="{!v.options}" value="{!v.value}"/>
+						    </aura:if>
+						    <aura:if isTrue="{!v.sObjectName=='Agreement__c'}">
+						        <lightning:radioGroup name="radioButtonGroup"
+								label="" options="{!v.contractOptions}" value="{!v.contractPDFValue}"/>
+						    </aura:if>
+						    
+						</div>
+						<aura:if isTrue="{!v.sObjectName == 'Agreement__c'}">
+						    <div style="display:-webkit-inline-box;">
+						        <span>印刷且更新進め</span>
+						        <ui:inputCheckbox value="{!v.updateFlg}"/>
+					        </div>
+					    </aura:if>
+					</div>
+				</div>
+			</div>
+			<!-- step2 -->
+			<div class="{!if(v.step2 == true,'','slds-hide') + '  slds-clearfix'}" style="margin-top:0.75rem;">
+		       	<aura:if isTrue="{!v.sObjectName == 'Agreement__c'}">
+					<div style="padding: 0rem 2rem; margin-top: -12px; overflow: auto;"
+						class="slds-form slds-form_compound">
+						<div style="font-size: 16px; text-align: center;">
+							<ui:outputText aura:id="pdfLable" value="{!v.pdfLable}" />
+						</div>
+						<div class="slds-form-element__group">
+							<div class="slds-form-element__row">
+
+								<div class="slds-form-element slds-size_1-of-4">
+									<div class="slds-form-element__control">
+										<ui:inputDate label="解約日" value="{!v.agreement.KaiyakuDate__c}" required="true" change="{!c.changeKaiyakuDate}"
+											displayDatePicker="true" />
+									</div>
+								</div>
+							</div>
+							<div class="slds-form-element__row">
+								<div class="slds-form-element slds-size_1-of-4">
+									<div class="slds-form-element__control">
+										<ui:inputDate label="入金期間開始日" value="{!v.agreement.NyukinKiaknStartDate__c}" disabled="true"
+											displayDatePicker="true" />
+									</div>
+								</div>
+								<div class="slds-form-element slds-size_1-of-4">
+									<div class="slds-form-element__control">
+										<ui:inputDate label="入金期間終了日" value="{!v.agreement.NyukinKiaknEndDate__c}" displayDatePicker="true" />
+									</div>
+								</div>
+								<div class="slds-form-element slds-size_1-of-4">
+									<div class="slds-form-element__control">
+										<ui:inputNumber label="入金済金額" value="{!v.agreement.NyukinOverAmount__c}" disabled="true" format="￥###,###,##0" />
+									</div>
+								</div>
+							</div>
+							<div class="slds-form-element__row">
+								<div class="slds-form-element slds-size_1-of-4">
+									<div class="slds-form-element__control">
+										<ui:inputDate label="残存リース期間開始日" value="{!v.agreement.ZanzonStartDate__c}" disabled="true"
+											displayDatePicker="true" />
+									</div>
+								</div>
+								<div class="slds-form-element slds-size_1-of-4">
+									<div class="slds-form-element__control">
+										<ui:inputDate label="残存リース期間終了日" value="{!v.agreement.ZanzonEndDate__c}"
+											displayDatePicker="true" />
+									</div>
+								</div>
+								<div class="slds-form-element slds-size_1-of-4">
+									<div class="slds-form-element__control">
+										<ui:inputNumber label="残存リース料" value="{!v.agreement.ZanzonLeaseAmount__c}" disabled="true"
+											format="￥###,###,##0" />
+									</div>
+								</div>
+							</div>
+						</div>
+					</div>
+				</aura:if>
+			    <aura:if isTrue="{!v.sObjectName == 'Estimate__c'}">
+				<div lass="test-id__record-layout-container riseTransitionEnabled" style="height: 14rem;overflow: auto" >
+                    <!--font-weight: bold;margin-left:50px-->
+					<div style="font-size:16px;text-align: center;">
+                        <ui:outputText aura:id="pdfLable" value="{!v.pdfLable}" />
+                    </div>                    
+					
+                    <div class="slds-grid full forcePageBlockSectionRow">
+                        <table class="table1" style="width:96%;margin-left:30px;margin-top:15px;">
+                            <!-- 見積依頼書或は注文書内容 -->
+                            <aura:if isTrue="{!or(v.value=='Order',v.value=='Mitsumoridepend')}">
+                            <thead>
+                                <tr>
+                                    <th width="2%"><ui:inputCheckbox class="slds-truncate" value="{!v.allCheck}" change="{!c.checkAll}"/></th>
+                                    <th width="15%">仕入先</th>
+                                    <th width="8%">ステータス</th>
+                                    <th width="8%" >配送区分</th>
+                                    <th style="padding-left: 10px" width="11%" >送料(下代)</th>
+                                    <th style="padding-left: 10px">納入日</th>
+                                    <th width="28%" style="padding-left: 10px">備考</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <aura:iteration var="pc" items="{!v.purchaseList}" indexVar="index">
+                                    <tr>
+                                        <td>
+                                            <ui:inputCheckbox class="slds-truncate" value="{!pc.selectedFlg}"/> 
+                                        </td>
+                                        <td>
+                                            <div class="slds-truncate" >
+                                                <ui:outputText aura:id="supplierName" value="{!pc.purchaseObj.Suppliers__r.Name}"/>
+                                            </div>
+                                        </td>
+                                        <td>
+                                            <ui:outputText aura:id="supplierStatus" value="{!pc.purchaseObj.Status__c}"/>
+                                        </td>
+                                         
+                                        <td>
+                                            <div class="slds-truncate label-hide">
+                                                <lightning:select disabled="true" value="{!pc.purchaseObj.HaisouType__c}">
+                                                    <aura:iteration items="{!v.haisouTypeOpts}" var="haisouTypeOpt">
+                                                        <option text="{!haisouTypeOpt}" value="{!haisouTypeOpt}"></option>
+                                                    </aura:iteration>
+                                                </lightning:select>
+                                            </div>
+                                        </td>
+                                        <td style="padding-left: 10px">
+                                            <div class="label-hide" >
+                                                <lightning:input type="number" name="currencyVal" value="{!pc.purchaseObj.ShippingCost__c}" formatter="currency"/>
+                                            </div>
+                                        </td> 
+                                        <td style="padding-left: 10px">
+                                            <ui:inputDateTime aura:id="deliveryTime" value="{!pc.purchaseObj.DeliveryTime2__c}" displayDatePicker="true"/>
+                                        </td>
+                                        <td style="padding-left: 10px">
+                                            <div class="slds-truncate" >
+                                                <ui:inputTextArea value="{!pc.purchaseObj.bikou__c}" rows="2"/>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                </aura:iteration>
+                            </tbody>
+                            </aura:if>
+                            <!-- 見積書非表示内容 -->
+                            <aura:if isTrue="{!v.value=='Mitsumori'}">
+                            <tbody>
+                                    <tr>
+                                        <td width="22%"></td>
+                                        <td width="2%">
+                                            <ui:inputCheckbox  value="{!v.modelNumberHide}"/>
+                                        </td>
+                                        <td width="15%" style="text-align: left;padding: 2px;">  型番</td>
+                                        <td width="15%"></td>
+                                        <td width="2%">
+                                          	<ui:inputCheckbox  value="{!v.truckCancelHide}"/>
+                                        </td>
+                                        <td width="23%" class="mitumoritd">トラックキャンセル料  </td>
+                                        <td width="5%"></td>
+                                    </tr>
+                                    <tr>
+                                        <td width="22%"></td>
+                                        <td width="2%"></td>
+                                        <td width="15%"></td>
+                                        <td width="15%"></td>
+                                        <td width="2%">
+                                          		<ui:inputCheckbox  value="{!v.newAgreemntHide}"/>
+                                        </td>
+                                        <td width="23%" class="mitumoritd">新規契約時の必要書類</td>
+                                        <td width="5%"></td>
+                                    </tr>
+                                    <tr>
+                                   		<td width="22%"></td>
+                                        <td width="2%"></td>
+                                        <td width="15%"></td>
+                                        <td width="15%"></td>
+                                        <td width="2%">
+                                          		<ui:inputCheckbox  value="{!v.hatyuNyukinHide}"/>
+                                        </td>
+                                        <td width="23%" class="mitumoritd">入金確認後に商品手配 </td>
+                                        <td width="5%"></td>
+                                    </tr>
+                                    <tr>
+                                       	<td width="22%"></td>
+                                        <td width="2%"></td>
+                                        <td width="15%"></td>
+                                        <td width="15%"></td>
+                                        <td width="2%">
+                                          	<ui:inputCheckbox  value="{!v.furikomiKozaHide}"/>
+                                        </td>
+                                        <td width="23%" class="mitumoritd">振込先口座情報</td>
+                                        <td width="5%"></td>
+                                    </tr>
+                            </tbody>
+                            </aura:if>
+                        </table>
+                    </div>
+				</div>
+				</aura:if>
+			</div>
+		</div>
+		<div class="modal-footer slds-modal__footer">
+			<div class="forceModalActionContainer--footerAction forceModalActionContainer">
+			    <!-- 見積分 -->
+			    <aura:if isTrue="{!v.sObjectName == 'Estimate__c'}">
+				<aura:if isTrue="{!and(or(v.value == 'Mitsumoridepend',or(v.value=='Order',v.value=='Mitsumori')), v.step1 )}">
+					<lightning:button label="次へ" onclick="{!c.doNext}" class="slds-button slds-button_brand" />	
+					<aura:set attribute="else">
+						<aura:if isTrue="{!v.step2}">
+							<lightning:button label="戻る" onclick="{!c.doBack}" class="slds-button slds-button_brand" />
+						</aura:if>
+				      	<lightning:button label="印刷" onclick="{!c.print}" class="slds-button slds-button_brand" />
+				    </aura:set>
+				</aura:if>
+				</aura:if>
+				
+				<!-- 更新分 -->
+				<aura:if isTrue="{!v.sObjectName == 'Agreement__c'}">
+				<aura:if isTrue="{!and(v.contractPDFValue == 'Kaiyaku', v.step1 )}">
+					<lightning:button label="次へ" onclick="{!c.doNext}" class="slds-button slds-button_brand" />	
+					<aura:set attribute="else">
+						<aura:if isTrue="{!v.step2}">
+							<lightning:button label="戻る" onclick="{!c.doBack}" class="slds-button slds-button_brand" />
+						</aura:if>
+				      	<lightning:button label="印刷" onclick="{!c.print}" class="slds-button slds-button_brand" />
+				    </aura:set>
+				</aura:if>
+				</aura:if>
+			</div>
+		</div>
+	</div>
+	<lightning:spinner aura:id="mySpinner" variant="brand" class="slds-hide" size="large"/>
+</aura:component>

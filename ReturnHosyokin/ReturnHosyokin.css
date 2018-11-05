@@ -1,0 +1,10 @@
+.THIS {
+}
+
+.THIS .slds-checkbox [type=checkbox][disabled]+.slds-checkbox__label .slds-checkbox_faux{
+	background-color:rgb(255, 255, 255, 0.75);
+}
+
+.THIS .slds-checkbox [type=checkbox][disabled]+.slds-checkbox__label .slds-checkbox_faux:after{
+	border-color:rgb(22, 50, 92);
+}
